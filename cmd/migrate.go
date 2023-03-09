@@ -56,5 +56,7 @@ func migrate(mongoDsn, postgresDsn string) error {
 		return err
 	}
 
+	err = migrateUserCollection(store, db)
+
 	return nil
 }
