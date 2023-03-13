@@ -35,7 +35,7 @@ func migrateSourcesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
 	pagination := datastore082.PaginationData{Next: 1}
 
-	for i := 0; i < numBatches; i++ {
+	for i := 1; i <= numBatches; i++ {
 		var sources []datastore082.Source
 
 		pager, err := store.FindMany(ctx, bson.M{}, nil, nil, pagination.Next, batchSize, &sources)
@@ -54,9 +54,14 @@ func migrateSourcesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		for i := range sources {
 			source := &sources[i]
 
+			projectID, ok := oldIDToNewID[source.ProjectID]
+			if !ok {
+				return fmt.Errorf("new project id for project %s not found for source %s", source.ProjectID, source.UID)
+			}
+
 			postgresSource := &datastore09.Source{
 				UID:            ulid.Make().String(),
-				ProjectID:      source.ProjectID,
+				ProjectID:      projectID,
 				MaskID:         source.MaskID,
 				Name:           source.Name,
 				Type:           datastore09.SourceType(source.Type),
@@ -66,7 +71,7 @@ func migrateSourcesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 				PubSub:         nil,
 				CreatedAt:      source.CreatedAt.Time(),
 				UpdatedAt:      source.UpdatedAt.Time(),
-				DeletedAt:      null.NewTime(source.DeletedAt.Time(), true),
+				DeletedAt:      getDeletedAt(source.DeletedAt),
 			}
 
 			if source.ProviderConfig != nil {
@@ -109,6 +114,8 @@ func migrateSourcesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 			if err != nil {
 				return fmt.Errorf("failed to save postgres source: %v", err)
 			}
+
+			oldIDToNewID[source.UID] = postgresSource.UID
 		}
 
 		pagination.Next = pager.Next

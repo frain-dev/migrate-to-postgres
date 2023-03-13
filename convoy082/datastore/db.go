@@ -164,7 +164,7 @@ func (d *MongoStore) FindByID(ctx context.Context, id string, projection bson.M,
 		ops.Projection = projection
 	}
 
-	return collection.FindOne(ctx, bson.M{"uid": id, "deleted_at": nil}, ops).Decode(result)
+	return collection.FindOne(ctx, bson.M{"uid": id}, ops).Decode(result)
 }
 
 /**
@@ -184,8 +184,6 @@ func (d *MongoStore) FindOne(ctx context.Context, filter, projection bson.M, res
 	ops := options.FindOne()
 	ops.Projection = projection
 
-	filter["deleted_at"] = nil
-
 	return collection.FindOne(ctx, filter, ops).Decode(result)
 }
 
@@ -200,8 +198,6 @@ func (d *MongoStore) FindMany(ctx context.Context, filter, projection bson.M, so
 		return PaginationData{}, err
 	}
 	collection := d.Database.Collection(col)
-
-	filter["deleted_at"] = nil
 
 	paginatedData, err := pager.
 		New(collection).
@@ -278,8 +274,6 @@ func (d *MongoStore) FindAll(ctx context.Context, filter bson.M, sort interface{
 		filter = bson.M{}
 	}
 
-	filter["deleted_at"] = nil
-
 	cursor, err := collection.Find(ctx, filter, ops)
 	if err != nil {
 		return err
@@ -303,7 +297,7 @@ func (d *MongoStore) UpdateByID(ctx context.Context, id string, payload interfac
 	}
 	collection := d.Database.Collection(col)
 
-	_, err = collection.UpdateOne(ctx, bson.M{"uid": id, "deleted_at": nil}, payload, nil)
+	_, err = collection.UpdateOne(ctx, bson.M{"uid": id}, payload, nil)
 	return err
 }
 
@@ -313,8 +307,6 @@ func (d *MongoStore) UpdateOne(ctx context.Context, filter bson.M, payload inter
 		return err
 	}
 	collection := d.Database.Collection(col)
-
-	filter["deleted_at"] = nil
 
 	_, err = collection.UpdateOne(ctx, filter, payload)
 	return err
@@ -346,7 +338,6 @@ func (d *MongoStore) UpdateMany(ctx context.Context, filter, payload bson.M, bul
 	if err != nil {
 		return err
 	}
-	filter["deleted_at"] = nil
 
 	collection := d.Database.Collection(col)
 
@@ -416,8 +407,6 @@ func (d *MongoStore) DeleteOne(ctx context.Context, filter bson.M, hardDelete bo
 	}
 	collection := d.Database.Collection(col)
 
-	filter["deleted_at"] = nil
-
 	if hardDelete {
 		_, err := collection.DeleteOne(ctx, filter, nil)
 		return err
@@ -446,8 +435,6 @@ func (d *MongoStore) DeleteMany(ctx context.Context, filter, payload bson.M, har
 	}
 	collection := d.Database.Collection(col)
 
-	filter["deleted_at"] = nil
-
 	if hardDelete {
 		_, err := collection.DeleteMany(ctx, filter)
 		return err
@@ -464,7 +451,6 @@ func (d *MongoStore) Count(ctx context.Context, filter map[string]interface{}) (
 	}
 	collection := d.Database.Collection(col)
 
-	filter["deleted_at"] = nil
 	return collection.CountDocuments(ctx, filter)
 }
 

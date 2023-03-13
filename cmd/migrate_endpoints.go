@@ -35,7 +35,7 @@ func migrateEndpointsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 	numBatches := int(math.Ceil(float64(totalEndpoints) / float64(batchSize)))
 	pagination := datastore082.PaginationData{Next: 1}
 
-	for i := 0; i < numBatches; i++ {
+	for i := 1; i <= numBatches; i++ {
 		var endpoints []datastore082.Endpoint
 
 		pager, err := store.FindMany(ctx, bson.M{}, nil, nil, pagination.Next, batchSize, &endpoints)
@@ -54,9 +54,14 @@ func migrateEndpointsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		for i := range endpoints {
 			endpoint := &endpoints[i]
 
+			projectID, ok := oldIDToNewID[endpoint.ProjectID]
+			if !ok {
+				return fmt.Errorf("new project id for project %s not found for endpoint %s", endpoint.ProjectID, endpoint.UID)
+			}
+
 			postgresEndpoint := &datastore09.Endpoint{
 				UID:                ulid.Make().String(),
-				ProjectID:          endpoint.ProjectID,
+				ProjectID:          projectID,
 				OwnerID:            endpoint.OwnerID,
 				TargetURL:          endpoint.TargetURL,
 				Title:              endpoint.Title,
@@ -71,7 +76,7 @@ func migrateEndpointsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 				RateLimitDuration:  endpoint.RateLimitDuration,
 				CreatedAt:          endpoint.CreatedAt.Time(),
 				UpdatedAt:          endpoint.UpdatedAt.Time(),
-				DeletedAt:          null.NewTime(endpoint.DeletedAt.Time(), true),
+				DeletedAt:          getDeletedAt(endpoint.DeletedAt),
 			}
 
 			if endpoint.Authentication != nil {
@@ -94,7 +99,7 @@ func migrateEndpointsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 					CreatedAt: secret.CreatedAt.Time(),
 					UpdatedAt: secret.UpdatedAt.Time(),
 					ExpiresAt: null.NewTime(secret.ExpiresAt.Time(), true),
-					DeletedAt: null.NewTime(secret.DeletedAt.Time(), true),
+					DeletedAt: getDeletedAt(secret.DeletedAt),
 				})
 			}
 
@@ -102,6 +107,8 @@ func migrateEndpointsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 			if err != nil {
 				return fmt.Errorf("failed to save postgres endpoint: %v", err)
 			}
+
+			oldIDToNewID[endpoint.UID] = postgresEndpoint.UID
 		}
 
 		pagination.Next = pager.Next

@@ -35,7 +35,7 @@ func migrateConfigurationsCollection(store datastore082.Store, dbx *sqlx.DB) err
 	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
 	pagination := datastore082.PaginationData{Next: 1}
 
-	for i := 0; i < numBatches; i++ {
+	for i := 1; i <= numBatches; i++ {
 		var configurations []datastore082.Configuration
 
 		pager, err := store.FindMany(ctx, bson.M{}, nil, nil, pagination.Next, batchSize, &configurations)
@@ -61,7 +61,7 @@ func migrateConfigurationsCollection(store datastore082.Store, dbx *sqlx.DB) err
 				StoragePolicy:      nil,
 				CreatedAt:          cfg.CreatedAt.Time(),
 				UpdatedAt:          cfg.UpdatedAt.Time(),
-				DeletedAt:          null.NewTime(cfg.DeletedAt.Time(), true),
+				DeletedAt:          getDeletedAt(cfg.DeletedAt),
 			}
 
 			if cfg.StoragePolicy != nil {
@@ -91,6 +91,9 @@ func migrateConfigurationsCollection(store datastore082.Store, dbx *sqlx.DB) err
 			if err != nil {
 				return fmt.Errorf("failed to save postgres cfg: %v", err)
 			}
+
+			oldIDToNewID[cfg.UID] = postgresCfg.UID
+
 		}
 
 		pagination.Next = pager.Next

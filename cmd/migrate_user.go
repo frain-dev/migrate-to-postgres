@@ -4,6 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
+
+	"github.com/frain-dev/convoy/database/postgres"
+	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/jmoiron/sqlx"
 
@@ -13,35 +19,25 @@ import (
 
 	datastore09 "github.com/frain-dev/convoy/datastore"
 	datastore082 "github.com/frain-dev/migrate-to-postgres/convoy082/datastore"
-	cm "github.com/frain-dev/migrate-to-postgres/convoy082/datastore/mongo"
-)
-
-const (
-	batchInsertUser = `
-    INSERT INTO convoy.users (
-		id,first_name,last_name,email,password,
-        email_verified,reset_password_token, email_verification_token,
-        reset_password_expires_at,email_verification_expires_at,created_at,updated_at)
-    VALUES (
-            :id, :first_name, :last_name, :email, :password,
-            :email_verified, :reset_password_token, :email_verification_token,
-            :reset_password_expires_at, :email_verification_expires_at,
-            :created_at, :updated_at, :deleted_at
-        );
-    `
 )
 
 func migrateUserCollection(store datastore082.Store, dbx *sqlx.DB) error {
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.UserCollection)
-	userRepo := cm.NewUserRepo(store)
-	pageable := datastore082.Pageable{
-		Page:    0,
-		PerPage: 1000,
-		Sort:    0,
+
+	count, err := store.Count(ctx, bson.M{})
+	if err != nil {
+		return fmt.Errorf("faild to count organisations: %v", err)
 	}
 
-	for {
-		users, paginationData, err := userRepo.LoadUsersPaged(ctx, pageable)
+	pgUserRepo := postgres.NewUserRepo(&PG{dbx: dbx})
+
+	var batchSize int64 = 1000
+	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
+
+	for i := 1; i <= numBatches; i++ {
+		var users []datastore082.User
+
+		_, err = store.FindMany(ctx, bson.M{}, nil, nil, int64(i), batchSize, &users)
 		if err != nil {
 			if errors.Is(err, mongo.ErrNoDocuments) {
 				break
@@ -50,12 +46,14 @@ func migrateUserCollection(store datastore082.Store, dbx *sqlx.DB) error {
 			return fmt.Errorf("failed to load users: %v", err)
 		}
 
-		postgresUsers := make([]datastore09.User, len(users))
+		if len(users) == 0 {
+			break
+		}
 
 		for i := range users {
 			user := &users[i]
 
-			postgresUsers[i] = datastore09.User{
+			postgresUser := &datastore09.User{
 				UID:                        ulid.Make().String(),
 				FirstName:                  user.FirstName,
 				LastName:                   user.LastName,
@@ -66,19 +64,26 @@ func migrateUserCollection(store datastore082.Store, dbx *sqlx.DB) error {
 				EmailVerificationToken:     user.EmailVerificationToken,
 				CreatedAt:                  user.CreatedAt.Time(),
 				UpdatedAt:                  user.UpdatedAt.Time(),
-				DeletedAt:                  null.NewTime(user.DeletedAt.Time(), true),
+				DeletedAt:                  getDeletedAt(user.DeletedAt),
 				ResetPasswordExpiresAt:     user.ResetPasswordExpiresAt.Time(),
 				EmailVerificationExpiresAt: user.EmailVerificationExpiresAt.Time(),
 			}
-		}
 
-		_, err = dbx.ExecContext(ctx, batchInsertUser, &postgresUsers)
-		if err != nil {
-			return fmt.Errorf("failed to batch insert users: %v", err)
-		}
+			err = pgUserRepo.CreateUser(ctx, postgresUser)
+			if err != nil {
+				return fmt.Errorf("failed to save postgres user: %v", err)
+			}
 
-		pageable.Page = int(paginationData.Next)
+			oldIDToNewID[user.UID] = postgresUser.UID
+		}
 	}
 
 	return nil
+}
+
+func getDeletedAt(t *primitive.DateTime) null.Time {
+	if t != nil {
+		return null.TimeFrom(t.Time())
+	}
+	return null.Time{}
 }

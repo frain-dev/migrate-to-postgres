@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/frain-dev/migrate-to-postgres/convoy082/util"
+
 	"github.com/frain-dev/convoy/pkg/httpheader"
 
 	"github.com/oklog/ulid/v2"
@@ -16,11 +18,9 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"go.mongodb.org/mongo-driver/mongo"
-	"gopkg.in/guregu/null.v4"
-
 	datastore09 "github.com/frain-dev/convoy/datastore"
 	datastore082 "github.com/frain-dev/migrate-to-postgres/convoy082/datastore"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func migrateEventDeliveriesCollection(store datastore082.Store, dbx *sqlx.DB) error {
@@ -37,7 +37,7 @@ func migrateEventDeliveriesCollection(store datastore082.Store, dbx *sqlx.DB) er
 	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
 	pagination := datastore082.PaginationData{Next: 1}
 
-	for i := 0; i < numBatches; i++ {
+	for i := 1; i <= numBatches; i++ {
 		var eventDeliveries []datastore082.EventDelivery
 
 		pager, err := store.FindMany(ctx, bson.M{}, nil, nil, pagination.Next, batchSize, &eventDeliveries)
@@ -56,24 +56,60 @@ func migrateEventDeliveriesCollection(store datastore082.Store, dbx *sqlx.DB) er
 		for i := range eventDeliveries {
 			ed := &eventDeliveries[i]
 
+			projectID, ok := oldIDToNewID[ed.ProjectID]
+			if !ok {
+				return fmt.Errorf("new project id for project %s not found for event delivery %s", ed.ProjectID, ed.UID)
+			}
+
+			endpointID, ok := oldIDToNewID[ed.EndpointID]
+			if !ok {
+				return fmt.Errorf("new endpoint id for endpoint %s not found for event delivery %s", ed.EndpointID, ed.UID)
+			}
+
+			eventID, ok := oldIDToNewID[ed.EventID]
+			if !ok {
+				return fmt.Errorf("new event id for event %s not found for event delivery %s", ed.EventID, ed.UID)
+			}
+
+			var deviceID string
+			if !util.IsStringEmpty(ed.DeviceID) {
+				deviceID, ok = oldIDToNewID[ed.DeviceID]
+				if !ok {
+					return fmt.Errorf("new device id for device %s not found for event delivery %s", ed.DeviceID, ed.UID)
+				}
+			}
+
+			subscriptionID, ok := oldIDToNewID[ed.SubscriptionID]
+			if !ok {
+				return fmt.Errorf("new subscription id for subscription %s not found for event delivery %s", ed.SubscriptionID, ed.UID)
+			}
+
+			var sourceID string
+			if ed.CLIMetadata != nil && !util.IsStringEmpty(ed.CLIMetadata.SourceID) {
+				sourceID, ok = oldIDToNewID[ed.CLIMetadata.SourceID]
+				if !ok {
+					return fmt.Errorf("new source id for source %s not found for event delivery %s", ed.CLIMetadata.SourceID, ed.UID)
+				}
+			}
+
 			postgresEventDelivery := &datastore09.EventDelivery{
 				UID:            ulid.Make().String(),
-				ProjectID:      ed.ProjectID,
-				EventID:        ed.EventID,
-				EndpointID:     ed.EndpointID,
-				DeviceID:       ed.DeviceID,
-				SubscriptionID: ed.SubscriptionID,
+				ProjectID:      projectID,
+				EventID:        eventID,
+				EndpointID:     deviceID,
+				DeviceID:       deviceID,
+				SubscriptionID: subscriptionID,
 				Headers:        httpheader.HTTPHeader(ed.Headers),
 				Status:         datastore09.EventDeliveryStatus(ed.Status),
 				Description:    ed.Description,
 				CreatedAt:      ed.CreatedAt.Time(),
 				UpdatedAt:      ed.UpdatedAt.Time(),
-				DeletedAt:      null.TimeFrom(ed.DeletedAt.Time()),
+				DeletedAt:      getDeletedAt(ed.DeletedAt),
 			}
 			if ed.CLIMetadata != nil {
 				postgresEventDelivery.CLIMetadata = &datastore09.CLIMetadata{
 					EventType: ed.CLIMetadata.EventType,
-					SourceID:  ed.CLIMetadata.SourceID,
+					SourceID:  sourceID,
 				}
 			}
 
@@ -95,7 +131,7 @@ func migrateEventDeliveriesCollection(store datastore082.Store, dbx *sqlx.DB) er
 					MsgID:            attempt.MsgID,
 					URL:              attempt.URL,
 					Method:           attempt.Method,
-					EndpointID:       attempt.EndpointID,
+					EndpointID:       endpointID,
 					APIVersion:       attempt.APIVersion,
 					IPAddress:        attempt.IPAddress,
 					RequestHeader:    datastore09.HttpHeader(attempt.RequestHeader),
@@ -106,7 +142,7 @@ func migrateEventDeliveriesCollection(store datastore082.Store, dbx *sqlx.DB) er
 					Status:           attempt.Status,
 					CreatedAt:        attempt.CreatedAt.Time(),
 					UpdatedAt:        attempt.UpdatedAt.Time(),
-					DeletedAt:        null.TimeFrom(attempt.DeletedAt.Time()),
+					DeletedAt:        getDeletedAt(attempt.DeletedAt),
 				})
 			}
 
@@ -114,6 +150,8 @@ func migrateEventDeliveriesCollection(store datastore082.Store, dbx *sqlx.DB) er
 			if err != nil {
 				return fmt.Errorf("failed to save postgres event delivery: %v", err)
 			}
+
+			oldIDToNewID[ed.UID] = postgresEventDelivery.UID
 		}
 
 		pagination.Next = pager.Next

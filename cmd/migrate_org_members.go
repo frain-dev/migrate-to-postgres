@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/frain-dev/migrate-to-postgres/convoy082/util"
+
 	"github.com/oklog/ulid/v2"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -14,12 +16,10 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"go.mongodb.org/mongo-driver/mongo"
-	"gopkg.in/guregu/null.v4"
-
 	auth09 "github.com/frain-dev/convoy/auth"
 	datastore09 "github.com/frain-dev/convoy/datastore"
 	datastore082 "github.com/frain-dev/migrate-to-postgres/convoy082/datastore"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func migrateOrgMemberCollection(store datastore082.Store, dbx *sqlx.DB) error {
@@ -36,7 +36,7 @@ func migrateOrgMemberCollection(store datastore082.Store, dbx *sqlx.DB) error {
 	numBatches := int(math.Ceil(float64(totalEndpoints) / float64(batchSize)))
 	pagination := datastore082.PaginationData{Next: 1}
 
-	for i := 0; i < numBatches; i++ {
+	for i := 1; i <= numBatches; i++ {
 		var organisationMembers []datastore082.OrganisationMember
 
 		pager, err := store.FindMany(ctx, bson.M{}, nil, nil, pagination.Next, batchSize, &organisationMembers)
@@ -55,24 +55,49 @@ func migrateOrgMemberCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		for i := range organisationMembers {
 			orgMember := &organisationMembers[i]
 
+			projectID, ok := oldIDToNewID[orgMember.Role.Project]
+			if !ok {
+				return fmt.Errorf("new project id for project %s not found for org member %s", orgMember.Role.Project, orgMember.UID)
+			}
+
+			var endpointID string
+			if !util.IsStringEmpty(orgMember.Role.Endpoint) {
+				endpointID, ok = oldIDToNewID[orgMember.Role.Endpoint]
+				if !ok {
+					return fmt.Errorf("new endpoint id for endpoint %s not found for org member %s", orgMember.Role.Endpoint, orgMember.UID)
+				}
+			}
+
+			orgID, ok := oldIDToNewID[orgMember.OrganisationID]
+			if !ok {
+				return fmt.Errorf("new org id for org %s not found for org member %s", orgMember.OrganisationID, orgMember.UID)
+			}
+
+			userID, ok := oldIDToNewID[orgMember.UserID]
+			if !ok {
+				return fmt.Errorf("new user id for user %s not found for org member  %s", orgMember.UserID, orgMember.UID)
+			}
+
 			postgresOrgMember := &datastore09.OrganisationMember{
 				UID:            ulid.Make().String(),
-				OrganisationID: orgMember.OrganisationID,
-				UserID:         orgMember.UserID,
+				OrganisationID: orgID,
+				UserID:         userID,
 				Role: auth09.Role{
 					Type:     auth09.RoleType(orgMember.Role.Type),
-					Project:  orgMember.Role.Project,
-					Endpoint: orgMember.Role.Endpoint,
+					Project:  projectID,
+					Endpoint: endpointID,
 				},
 				CreatedAt: orgMember.CreatedAt.Time(),
 				UpdatedAt: orgMember.UpdatedAt.Time(),
-				DeletedAt: null.NewTime(orgMember.DeletedAt.Time(), true),
+				DeletedAt: getDeletedAt(orgMember.DeletedAt),
 			}
 
 			err = pgOrgMemberRepo.CreateOrganisationMember(ctx, postgresOrgMember)
 			if err != nil {
 				return fmt.Errorf("failed to save postgres orgMember: %v", err)
 			}
+
+			oldIDToNewID[orgMember.UID] = postgresOrgMember.UID
 		}
 
 		pagination.Next = pager.Next

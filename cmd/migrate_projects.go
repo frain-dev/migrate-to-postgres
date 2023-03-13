@@ -15,11 +15,9 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"go.mongodb.org/mongo-driver/mongo"
-	"gopkg.in/guregu/null.v4"
-
 	datastore09 "github.com/frain-dev/convoy/datastore"
 	datastore082 "github.com/frain-dev/migrate-to-postgres/convoy082/datastore"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func migrateProjectsCollection(store datastore082.Store, dbx *sqlx.DB) error {
@@ -36,7 +34,7 @@ func migrateProjectsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 	numBatches := int(math.Ceil(float64(totalProjects) / float64(batchSize)))
 	pagination := datastore082.PaginationData{Next: 1}
 
-	for i := 0; i < numBatches; i++ {
+	for i := 1; i <= numBatches; i++ {
 		var projects []datastore082.Project
 
 		pager, err := store.FindMany(ctx, bson.M{}, nil, nil, pagination.Next, batchSize, &projects)
@@ -55,16 +53,21 @@ func migrateProjectsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		for i := range projects {
 			project := &projects[i]
 
+			orgID, ok := oldIDToNewID[project.OrganisationID]
+			if !ok {
+				return fmt.Errorf("new org id for org %s not found for project %s", project.OrganisationID, project.UID)
+			}
+
 			postgresProject := &datastore09.Project{
 				UID:             ulid.Make().String(),
 				Name:            project.Name,
 				LogoURL:         project.LogoURL,
-				OrganisationID:  project.OrganisationID,
+				OrganisationID:  orgID,
 				ProjectConfigID: "",
 				Type:            datastore09.ProjectType(project.Type),
 				CreatedAt:       project.CreatedAt.Time(),
 				UpdatedAt:       project.UpdatedAt.Time(),
-				DeletedAt:       null.NewTime(project.DeletedAt.Time(), true),
+				DeletedAt:       getDeletedAt(project.DeletedAt),
 			}
 
 			if project.Config == nil {
@@ -132,6 +135,8 @@ func migrateProjectsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 			if err != nil {
 				return fmt.Errorf("failed to save postgres project: %v", err)
 			}
+
+			oldIDToNewID[project.UID] = postgresProject.UID
 		}
 
 		pagination.Next = pager.Next

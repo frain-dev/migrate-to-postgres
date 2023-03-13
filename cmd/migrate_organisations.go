@@ -4,6 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
+
+	"github.com/frain-dev/convoy/database/postgres"
+
+	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/jmoiron/sqlx"
 
@@ -13,33 +18,25 @@ import (
 
 	datastore09 "github.com/frain-dev/convoy/datastore"
 	datastore082 "github.com/frain-dev/migrate-to-postgres/convoy082/datastore"
-	cm "github.com/frain-dev/migrate-to-postgres/convoy082/datastore/mongo"
-)
-
-const (
-	batchInsertOrganisations = `
-	INSERT INTO convoy.organisations (
-	        id, name, owner_id, custom_domain, 
-	        assigned_domain, created_at, updated_at, deleted_at)
-	VALUES (
-	        :id, :name, :owner_id, :custom_domain, 
-	       :created_at, :updated_at, :deleted_at :assigned_domain,
-	        :created_at, :updated_at, :deleted_at
-	);
-    `
 )
 
 func migrateOrganisationsCollection(store datastore082.Store, dbx *sqlx.DB) error {
-	ctx := context.Background()
-	orgRepo := cm.NewOrgRepo(store)
-	pageable := datastore082.Pageable{
-		Page:    0,
-		PerPage: 1000,
-		Sort:    0,
+	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.OrganisationCollection)
+
+	count, err := store.Count(ctx, bson.M{})
+	if err != nil {
+		return fmt.Errorf("faild to count organisations: %v", err)
 	}
 
-	for {
-		organisations, paginationData, err := orgRepo.LoadOrganisationsPaged(ctx, pageable)
+	pgOrgRepo := postgres.NewOrgRepo(&PG{dbx: dbx})
+
+	var batchSize int64 = 1000
+	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
+
+	for i := 1; i <= numBatches; i++ {
+		var organisations []datastore082.Organisation
+
+		_, err = store.FindMany(ctx, bson.M{}, nil, nil, int64(i), batchSize, &organisations)
 		if err != nil {
 			if errors.Is(err, mongo.ErrNoDocuments) {
 				break
@@ -52,29 +49,32 @@ func migrateOrganisationsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 			break
 		}
 
-		postgresOrgs := make([]datastore09.Organisation, len(organisations))
-
 		for i := range organisations {
 			org := &organisations[i]
 
-			postgresOrgs[i] = datastore09.Organisation{
+			ownerID, ok := oldIDToNewID[org.OwnerID]
+			if !ok {
+				return fmt.Errorf("new owner id for owner %s not found for organisation %s", org.OwnerID, org.UID)
+			}
+
+			postgresOrg := &datastore09.Organisation{
 				UID:            ulid.Make().String(),
-				OwnerID:        org.OwnerID,
+				OwnerID:        ownerID,
 				Name:           org.Name,
 				CustomDomain:   null.NewString(org.CustomDomain, true),
 				AssignedDomain: null.NewString(org.AssignedDomain, true),
 				CreatedAt:      org.CreatedAt.Time(),
 				UpdatedAt:      org.UpdatedAt.Time(),
-				DeletedAt:      null.NewTime(org.DeletedAt.Time(), true),
+				DeletedAt:      getDeletedAt(org.DeletedAt),
 			}
-		}
 
-		_, err = dbx.ExecContext(ctx, batchInsertOrganisations, &postgresOrgs)
-		if err != nil {
-			return fmt.Errorf("failed to batch insert organisations: %v", err)
-		}
+			err = pgOrgRepo.CreateOrganisation(ctx, postgresOrg)
+			if err != nil {
+				return fmt.Errorf("failed to save postgres org: %v", err)
+			}
 
-		pageable.Page = int(paginationData.Next)
+			oldIDToNewID[org.UID] = postgresOrg.UID
+		}
 	}
 
 	return nil
