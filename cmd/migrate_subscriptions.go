@@ -33,12 +33,11 @@ func migrateSubscriptionsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 
 	var batchSize int64 = 1000
 	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
-	pagination := datastore082.PaginationData{Next: 1}
 
 	for i := 1; i <= numBatches; i++ {
 		var subscriptions []datastore082.Subscription
 
-		pager, err := store.FindMany(ctx, bson.M{}, nil, nil, pagination.Next, batchSize, &subscriptions)
+		_, err = store.FindMany(ctx, bson.M{}, nil, nil, int64(i), batchSize, &subscriptions)
 		if err != nil {
 			if errors.Is(err, mongo.ErrNoDocuments) {
 				break
@@ -147,8 +146,6 @@ func migrateSubscriptionsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 
 			oldIDToNewID[s.UID] = postgresSubscription.UID
 		}
-
-		pagination.Next = pager.Next
 	}
 
 	return nil

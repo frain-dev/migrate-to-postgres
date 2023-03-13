@@ -33,12 +33,11 @@ func migrateEndpointsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 	var batchSize int64 = 1000
 	numBatches := int(math.Ceil(float64(totalEndpoints) / float64(batchSize)))
-	pagination := datastore082.PaginationData{Next: 1}
 
 	for i := 1; i <= numBatches; i++ {
 		var endpoints []datastore082.Endpoint
 
-		pager, err := store.FindMany(ctx, bson.M{}, nil, nil, pagination.Next, batchSize, &endpoints)
+		_, err = store.FindMany(ctx, bson.M{}, nil, nil, int64(i), batchSize, &endpoints)
 		if err != nil {
 			if errors.Is(err, mongo.ErrNoDocuments) {
 				break
@@ -110,8 +109,6 @@ func migrateEndpointsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 			oldIDToNewID[endpoint.UID] = postgresEndpoint.UID
 		}
-
-		pagination.Next = pager.Next
 	}
 
 	return nil

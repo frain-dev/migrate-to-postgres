@@ -36,12 +36,11 @@ func migrateAPIKeysCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 	var batchSize int64 = 1000
 	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
-	pagination := datastore082.PaginationData{Next: 1}
 
 	for i := 1; i <= numBatches; i++ {
 		var apiKeys []datastore082.APIKey
 
-		pager, err := store.FindMany(ctx, bson.M{}, nil, nil, pagination.Next, batchSize, &apiKeys)
+		_, err = store.FindMany(ctx, bson.M{}, nil, nil, int64(i), batchSize, &apiKeys)
 		if err != nil {
 			if errors.Is(err, mongo.ErrNoDocuments) {
 				break
@@ -104,8 +103,6 @@ func migrateAPIKeysCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 			oldIDToNewID[ak.UID] = postgresAPIKey.UID
 		}
-
-		pagination.Next = pager.Next
 	}
 
 	return nil

@@ -33,12 +33,11 @@ func migratePortalLinksCollection(store datastore082.Store, dbx *sqlx.DB) error 
 
 	var batchSize int64 = 1000
 	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
-	pagination := datastore082.PaginationData{Next: 1}
 
 	for i := 1; i <= numBatches; i++ {
 		var portalLinks []datastore082.PortalLink
 
-		pager, err := store.FindMany(ctx, bson.M{}, nil, nil, pagination.Next, batchSize, &portalLinks)
+		_, err = store.FindMany(ctx, bson.M{}, nil, nil, int64(i), batchSize, &portalLinks)
 		if err != nil {
 			if errors.Is(err, mongo.ErrNoDocuments) {
 				break
@@ -90,8 +89,6 @@ func migratePortalLinksCollection(store datastore082.Store, dbx *sqlx.DB) error 
 
 			oldIDToNewID[portalLink.UID] = postgresPortalLink.UID
 		}
-
-		pagination.Next = pager.Next
 	}
 
 	return nil

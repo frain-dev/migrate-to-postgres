@@ -35,12 +35,11 @@ func migrateEventDeliveriesCollection(store datastore082.Store, dbx *sqlx.DB) er
 
 	var batchSize int64 = 1000
 	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
-	pagination := datastore082.PaginationData{Next: 1}
 
 	for i := 1; i <= numBatches; i++ {
 		var eventDeliveries []datastore082.EventDelivery
 
-		pager, err := store.FindMany(ctx, bson.M{}, nil, nil, pagination.Next, batchSize, &eventDeliveries)
+		_, err = store.FindMany(ctx, bson.M{}, nil, nil, int64(i), batchSize, &eventDeliveries)
 		if err != nil {
 			if errors.Is(err, mongo.ErrNoDocuments) {
 				break
@@ -96,7 +95,7 @@ func migrateEventDeliveriesCollection(store datastore082.Store, dbx *sqlx.DB) er
 				UID:            ulid.Make().String(),
 				ProjectID:      projectID,
 				EventID:        eventID,
-				EndpointID:     deviceID,
+				EndpointID:     endpointID,
 				DeviceID:       deviceID,
 				SubscriptionID: subscriptionID,
 				Headers:        httpheader.HTTPHeader(ed.Headers),
@@ -153,8 +152,6 @@ func migrateEventDeliveriesCollection(store datastore082.Store, dbx *sqlx.DB) er
 
 			oldIDToNewID[ed.UID] = postgresEventDelivery.UID
 		}
-
-		pagination.Next = pager.Next
 	}
 
 	return nil
