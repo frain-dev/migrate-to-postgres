@@ -31,7 +31,7 @@ func migrateAPIKeysCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 	count, err := store.Count(ctx, bson.M{})
 	if err != nil {
-		return fmt.Errorf("faild to count portal links: %v", err)
+		return fmt.Errorf("faild to count api keys: %v", err)
 	}
 
 	var batchSize int64 = 1000

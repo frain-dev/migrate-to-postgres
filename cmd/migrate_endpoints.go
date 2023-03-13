@@ -28,7 +28,7 @@ func migrateEndpointsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 	totalEndpoints, err := store.Count(ctx, bson.M{})
 	if err != nil {
-		return fmt.Errorf("faild to count projects: %v", err)
+		return fmt.Errorf("faild to count endpoints: %v", err)
 	}
 
 	var batchSize int64 = 1000

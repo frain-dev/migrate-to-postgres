@@ -26,7 +26,7 @@ func migrateUserCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 	count, err := store.Count(ctx, bson.M{})
 	if err != nil {
-		return fmt.Errorf("faild to count organisations: %v", err)
+		return fmt.Errorf("faild to count users: %v", err)
 	}
 
 	pgUserRepo := postgres.NewUserRepo(&PG{dbx: dbx})

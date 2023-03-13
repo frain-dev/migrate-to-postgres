@@ -28,7 +28,7 @@ func migrateSubscriptionsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 
 	count, err := store.Count(ctx, bson.M{})
 	if err != nil {
-		return fmt.Errorf("faild to count portal links: %v", err)
+		return fmt.Errorf("faild to count subscriptions: %v", err)
 	}
 
 	var batchSize int64 = 1000

@@ -29,7 +29,7 @@ func migrateOrgInvitesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 	count, err := store.Count(ctx, bson.M{})
 	if err != nil {
-		return fmt.Errorf("faild to count projects: %v", err)
+		return fmt.Errorf("faild to count org invites: %v", err)
 	}
 
 	var batchSize int64 = 1000
