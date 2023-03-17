@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/frain-dev/migrate-to-postgres/convoy082/pkg/log"
+
 	"github.com/frain-dev/convoy/config"
 	"github.com/oklog/ulid/v2"
 
@@ -56,7 +58,8 @@ func migrateProjectsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 			orgID, ok := oldIDToNewID[project.OrganisationID]
 			if !ok {
-				return fmt.Errorf("new org id for org %s not found for project %s", project.OrganisationID, project.UID)
+				log.Errorf("new org id for org %s not found for project %s", project.OrganisationID, project.UID)
+				continue
 			}
 
 			postgresProject := &datastore09.Project{
