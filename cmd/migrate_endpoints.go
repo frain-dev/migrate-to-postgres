@@ -22,6 +22,8 @@ import (
 )
 
 func migrateEndpointsCollection(store datastore082.Store, dbx *sqlx.DB) error {
+	fmt.Println("Starting endpoint collection migration")
+
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.EndpointCollection)
 
 	pgProjectRepo := postgres.NewEndpointRepo(&PG{dbx: dbx})
@@ -111,5 +113,6 @@ func migrateEndpointsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		}
 	}
 
+	fmt.Println("Finished device collection migration")
 	return nil
 }

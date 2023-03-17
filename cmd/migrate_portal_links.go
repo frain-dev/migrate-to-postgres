@@ -22,6 +22,8 @@ import (
 )
 
 func migratePortalLinksCollection(store datastore082.Store, dbx *sqlx.DB) error {
+	fmt.Println("Starting portal links collection migration")
+
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.PortalLinkCollection)
 
 	pgPortalLinkRepo := postgres.NewPortalLinkRepo(&PG{dbx: dbx})
@@ -91,5 +93,6 @@ func migratePortalLinksCollection(store datastore082.Store, dbx *sqlx.DB) error 
 		}
 	}
 
+	fmt.Println("Finisehd portal links collection migration")
 	return nil
 }

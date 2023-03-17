@@ -22,6 +22,8 @@ import (
 )
 
 func migrateConfigurationsCollection(store datastore082.Store, dbx *sqlx.DB) error {
+	fmt.Println("Starting configuration collection migration")
+
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.ConfigCollection)
 
 	pgConfigRepo := postgres.NewConfigRepo(&PG{dbx: dbx})
@@ -97,5 +99,6 @@ func migrateConfigurationsCollection(store datastore082.Store, dbx *sqlx.DB) err
 
 	}
 
+	fmt.Println("Finished configuration collection migration")
 	return nil
 }

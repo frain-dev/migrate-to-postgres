@@ -21,6 +21,8 @@ import (
 )
 
 func migrateOrganisationsCollection(store datastore082.Store, dbx *sqlx.DB) error {
+	fmt.Println("Starting organisations collection migration")
+
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.OrganisationCollection)
 
 	count, err := store.Count(ctx, bson.M{})
@@ -77,5 +79,6 @@ func migrateOrganisationsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 		}
 	}
 
+	fmt.Println("Finished organisations collection migration")
 	return nil
 }

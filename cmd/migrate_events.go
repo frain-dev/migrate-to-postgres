@@ -24,6 +24,8 @@ import (
 )
 
 func migrateEventsCollection(store datastore082.Store, dbx *sqlx.DB) error {
+	fmt.Println("Starting events collection migration")
+
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.EventCollection)
 
 	pgEventRepo := postgres.NewEventRepo(&PG{dbx: dbx})
@@ -106,5 +108,6 @@ func migrateEventsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		}
 	}
 
+	fmt.Println("Finished events collection migration")
 	return nil
 }

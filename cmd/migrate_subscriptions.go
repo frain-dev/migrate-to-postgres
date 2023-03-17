@@ -22,6 +22,8 @@ import (
 )
 
 func migrateSubscriptionsCollection(store datastore082.Store, dbx *sqlx.DB) error {
+	fmt.Println("Starting subscriptions collection migration")
+
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.SubscriptionCollection)
 
 	pgSubscriptionRepo := postgres.NewSubscriptionRepo(&PG{dbx: dbx})
@@ -148,5 +150,6 @@ func migrateSubscriptionsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 		}
 	}
 
+	fmt.Println("Finished subscriptions collection migration")
 	return nil
 }

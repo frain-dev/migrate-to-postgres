@@ -21,6 +21,8 @@ import (
 )
 
 func migrateProjectsCollection(store datastore082.Store, dbx *sqlx.DB) error {
+	fmt.Println("Starting projects collection migration")
+
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.ProjectsCollection)
 
 	pgProjectRepo := postgres.NewProjectRepo(&PG{dbx: dbx})
@@ -139,5 +141,6 @@ func migrateProjectsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		}
 	}
 
+	fmt.Println("Finished projects collection migration")
 	return nil
 }

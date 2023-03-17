@@ -20,6 +20,8 @@ import (
 )
 
 func migrateDevicesCollection(store datastore082.Store, dbx *sqlx.DB) error {
+	fmt.Println("Starting device collection migration")
+
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.DeviceCollection)
 
 	pgDeviceRepo := postgres.NewDeviceRepo(&PG{dbx: dbx})
@@ -82,5 +84,6 @@ func migrateDevicesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		}
 	}
 
+	fmt.Println("Finished device collection migration")
 	return nil
 }

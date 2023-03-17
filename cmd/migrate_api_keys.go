@@ -25,6 +25,8 @@ import (
 )
 
 func migrateAPIKeysCollection(store datastore082.Store, dbx *sqlx.DB) error {
+	fmt.Println("Starting api key collection migration")
+
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.APIKeyCollection)
 
 	pgAPIKeyRepo := postgres.NewAPIKeyRepo(&PG{dbx: dbx})
@@ -105,5 +107,6 @@ func migrateAPIKeysCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		}
 	}
 
+	fmt.Println("Finished api key collection migration")
 	return nil
 }
