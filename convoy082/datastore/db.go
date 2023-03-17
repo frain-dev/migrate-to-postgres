@@ -193,6 +193,12 @@ func (d *MongoStore) FindMany(ctx context.Context, filter, projection bson.M, so
 		return PaginationData{}, ErrInvalidPtr
 	}
 
+	if filter == nil {
+		filter = bson.M{}
+	}
+
+	filter["deleted_at"] = nil
+
 	col, err := d.retrieveCollection(ctx)
 	if err != nil {
 		return PaginationData{}, err

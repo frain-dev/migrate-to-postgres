@@ -71,6 +71,7 @@ func migrateUserCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 			err = pgUserRepo.CreateUser(ctx, postgresUser)
 			if err != nil {
+				fmt.Printf("user %+v\n", postgresUser)
 				return fmt.Errorf("failed to save postgres user: %v", err)
 			}
 
