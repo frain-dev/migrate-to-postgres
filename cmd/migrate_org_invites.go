@@ -58,11 +58,15 @@ func migrateOrgInvitesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 		for i := range organisationInvites {
 			orgInvite := &organisationInvites[i]
+			var ok bool
 
-			projectID, ok := oldIDToNewID[orgInvite.Role.Project]
-			if !ok {
-				log.Errorf("new project id for project %s not found for org invite %s", orgInvite.Role.Project, orgInvite.UID)
-				continue
+			var projectID string
+			if !util.IsStringEmpty(orgInvite.Role.Project) {
+				projectID, ok = oldIDToNewID[orgInvite.Role.Project]
+				if !ok {
+					log.Errorf("new project id for project %s not found for org invite %s", orgInvite.Role.Project, orgInvite.UID)
+					continue
+				}
 			}
 
 			var endpointID string

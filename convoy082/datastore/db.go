@@ -211,7 +211,6 @@ func (d *MongoStore) FindMany(ctx context.Context, filter, projection bson.M, so
 		Limit(limit).
 		Page(page).
 		Filter(filter).
-		Sort("created_at", -1).
 		Sort("_id", 1).
 		Decode(results).
 		Find()

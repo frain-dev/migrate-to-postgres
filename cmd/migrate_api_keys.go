@@ -60,11 +60,15 @@ func migrateAPIKeysCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 		for i := range apiKeys {
 			ak := &apiKeys[i]
+			var ok bool
 
-			projectID, ok := oldIDToNewID[ak.Role.Project]
-			if !ok {
-				log.Errorf("new project id for project %s not found for api key %s", ak.Role.Project, ak.UID)
-				continue
+			var projectID string
+			if !util.IsStringEmpty(ak.Role.Project) {
+				projectID, ok = oldIDToNewID[ak.Role.Project]
+				if !ok {
+					log.Errorf("new project id for project %s not found for api key %s", ak.Role.Project, ak.UID)
+					continue
+				}
 			}
 
 			var endpointID string
