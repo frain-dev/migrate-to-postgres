@@ -28,6 +28,7 @@ import (
 
 func migrateAPIKeysCollection(store datastore082.Store, dbx *sqlx.DB) error {
 	fmt.Println("Starting api key collection migration")
+	defer fmt.Println("Finished api key collection migration")
 
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.APIKeyCollection)
 
@@ -112,6 +113,5 @@ func migrateAPIKeysCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		}
 	}
 
-	fmt.Println("Finished api key collection migration")
 	return nil
 }

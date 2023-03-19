@@ -23,6 +23,8 @@ import (
 
 func migrateUserCollection(store datastore082.Store, dbx *sqlx.DB) error {
 	fmt.Println("Starting user collection migration")
+	defer fmt.Println("Finished user collection migration")
+
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.UserCollection)
 
 	count, err := store.Count(ctx, bson.M{})
@@ -79,8 +81,6 @@ func migrateUserCollection(store datastore082.Store, dbx *sqlx.DB) error {
 			oldIDToNewID[user.UID] = postgresUser.UID
 		}
 	}
-
-	fmt.Println("Finished user collection migration")
 
 	return nil
 }

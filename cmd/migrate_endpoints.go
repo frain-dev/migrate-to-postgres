@@ -25,6 +25,7 @@ import (
 
 func migrateEndpointsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 	fmt.Println("Starting endpoint collection migration")
+	defer fmt.Println("Finished endpoint collection migration")
 
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.EndpointCollection)
 
@@ -120,6 +121,5 @@ func migrateEndpointsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		}
 	}
 
-	fmt.Println("Finished device collection migration")
 	return nil
 }

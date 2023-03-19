@@ -26,6 +26,7 @@ import (
 
 func migrateOrgInvitesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 	fmt.Println("Starting org invites collection migration")
+	defer fmt.Println("Finished org invites collection migration")
 
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.OrganisationInvitesCollection)
 
@@ -105,6 +106,5 @@ func migrateOrgInvitesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		}
 	}
 
-	fmt.Println("Finished org invites collection migration")
 	return nil
 }

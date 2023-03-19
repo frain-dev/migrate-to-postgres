@@ -25,6 +25,7 @@ import (
 
 func migrateSourcesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 	fmt.Println("Starting sources collection migration")
+	defer fmt.Println("Finished sources collection migration")
 
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.SourceCollection)
 
@@ -123,6 +124,5 @@ func migrateSourcesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		}
 	}
 
-	fmt.Println("Finished sources collection migration")
 	return nil
 }
