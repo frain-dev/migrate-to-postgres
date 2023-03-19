@@ -97,7 +97,7 @@ func migrateSubscriptionsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 				EndpointID: endpointID,
 				DeviceID:   deviceID,
 				FilterConfig: &datastore09.FilterConfiguration{
-					EventTypes: nil,
+					EventTypes: []string{"*"},
 					Filter: datastore09.FilterSchema{
 						Headers: datastore09.M{},
 						Body:    datastore09.M{},
@@ -124,21 +124,17 @@ func migrateSubscriptionsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 			}
 
 			if s.FilterConfig != nil {
-				postgresSubscription.FilterConfig = &datastore09.FilterConfiguration{
-					EventTypes: s.FilterConfig.EventTypes,
-					Filter: datastore09.FilterSchema{
-						Headers: s.FilterConfig.Filter.Headers,
-						Body:    s.FilterConfig.Filter.Body,
-					},
+				if len(s.FilterConfig.EventTypes) > 0 {
+					postgresSubscription.FilterConfig.EventTypes = s.FilterConfig.EventTypes
 				}
 
-				if postgresSubscription.FilterConfig.Filter.Headers == nil {
-					postgresSubscription.FilterConfig.Filter.Headers = datastore09.M{}
+				if s.FilterConfig.Filter.Headers != nil {
+					postgresSubscription.FilterConfig.Filter.Headers = s.FilterConfig.Filter.Headers
+				}
+				if s.FilterConfig.Filter.Body != nil {
+					postgresSubscription.FilterConfig.Filter.Body = s.FilterConfig.Filter.Body
 				}
 
-				if postgresSubscription.FilterConfig.Filter.Body == nil {
-					postgresSubscription.FilterConfig.Filter.Body = datastore09.M{}
-				}
 			}
 
 			if s.RateLimitConfig != nil {
