@@ -104,6 +104,10 @@ func migrateEndpointsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 				})
 			}
 
+			if postgresEndpoint.Secrets == nil {
+				postgresEndpoint.Secrets = datastore09.Secrets{}
+			}
+
 			err = pgProjectRepo.CreateEndpoint(ctx, postgresEndpoint, postgresEndpoint.ProjectID)
 			if err != nil {
 				return fmt.Errorf("failed to save postgres endpoint: %v", err)
