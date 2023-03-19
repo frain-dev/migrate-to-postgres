@@ -109,8 +109,8 @@ func migrateSubscriptionsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 
 			if s.AlertConfig != nil {
 				postgresSubscription.AlertConfig = &datastore09.AlertConfiguration{
-					Count:     postgresSubscription.AlertConfig.Count,
-					Threshold: postgresSubscription.AlertConfig.Threshold,
+					Count:     s.AlertConfig.Count,
+					Threshold: s.AlertConfig.Threshold,
 				}
 			}
 
