@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/frain-dev/migrate-to-postgres/convoy082/pkg/log"
+
 	"github.com/frain-dev/migrate-to-postgres/convoy082/util"
 
 	"github.com/oklog/ulid/v2"
@@ -57,7 +59,8 @@ func migratePortalLinksCollection(store datastore082.Store, dbx *sqlx.DB) error 
 
 			projectID, ok := oldIDToNewID[portalLink.ProjectID]
 			if !ok {
-				return fmt.Errorf("new project id for project %s not found for portal link %s", portalLink.ProjectID, portalLink.UID)
+				log.Errorf("new project id for project %s not found for portal link %s", portalLink.ProjectID, portalLink.UID)
+				continue
 			}
 
 			endpoints := make([]string, 0, len(portalLink.Endpoints))
@@ -66,7 +69,8 @@ func migratePortalLinksCollection(store datastore082.Store, dbx *sqlx.DB) error 
 				if !util.IsStringEmpty(id) {
 					newID, ok := oldIDToNewID[id]
 					if !ok {
-						return fmt.Errorf("new endpoint id for endpoint %s not found for portal link %s", id, portalLink.UID)
+						log.Errorf("new endpoint id for endpoint %s not found for portal link %s", id, portalLink.UID)
+						continue
 					}
 
 					endpoints = append(endpoints, newID)

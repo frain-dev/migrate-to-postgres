@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/frain-dev/migrate-to-postgres/convoy082/pkg/log"
+
 	"github.com/frain-dev/migrate-to-postgres/convoy082/util"
 
 	"github.com/frain-dev/convoy/pkg/httpheader"
@@ -59,7 +61,8 @@ func migrateEventsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 			projectID, ok := oldIDToNewID[event.ProjectID]
 			if !ok {
-				return fmt.Errorf("new project id for project %s not found for event %s", event.ProjectID, event.UID)
+				log.Errorf("new project id for project %s not found for event %s", event.ProjectID, event.UID)
+				continue
 			}
 
 			endpoints := make([]string, 0, len(event.Endpoints))
@@ -68,7 +71,8 @@ func migrateEventsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 				if !util.IsStringEmpty(id) {
 					newID, ok := oldIDToNewID[id]
 					if !ok {
-						return fmt.Errorf("new endpoint id for endpoint %s not found for event %s", id, event.UID)
+						log.Errorf("new endpoint id for endpoint %s not found for event %s", id, event.UID)
+						continue
 					}
 
 					endpoints = append(endpoints, newID)
@@ -79,7 +83,8 @@ func migrateEventsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 			if !util.IsStringEmpty(event.SourceID) {
 				sourceID, ok = oldIDToNewID[event.SourceID]
 				if !ok {
-					return fmt.Errorf("new source id for source %s not found for event %s", event.SourceID, event.UID)
+					log.Errorf("new source id for source %s not found for event %s", event.SourceID, event.UID)
+					continue
 				}
 			}
 

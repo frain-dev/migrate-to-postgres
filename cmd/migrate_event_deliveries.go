@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/frain-dev/migrate-to-postgres/convoy082/pkg/log"
+
 	"github.com/frain-dev/migrate-to-postgres/convoy082/util"
 
 	"github.com/frain-dev/convoy/pkg/httpheader"
@@ -59,37 +61,43 @@ func migrateEventDeliveriesCollection(store datastore082.Store, dbx *sqlx.DB) er
 
 			projectID, ok := oldIDToNewID[ed.ProjectID]
 			if !ok {
-				return fmt.Errorf("new project id for project %s not found for event delivery %s", ed.ProjectID, ed.UID)
+				log.Errorf("new project id for project %s not found for event delivery %s", ed.ProjectID, ed.UID)
+				continue
 			}
 
 			endpointID, ok := oldIDToNewID[ed.EndpointID]
 			if !ok {
-				return fmt.Errorf("new endpoint id for endpoint %s not found for event delivery %s", ed.EndpointID, ed.UID)
+				log.Errorf("new endpoint id for endpoint %s not found for event delivery %s", ed.EndpointID, ed.UID)
+				continue
 			}
 
 			eventID, ok := oldIDToNewID[ed.EventID]
 			if !ok {
-				return fmt.Errorf("new event id for event %s not found for event delivery %s", ed.EventID, ed.UID)
+				log.Errorf("new event id for event %s not found for event delivery %s", ed.EventID, ed.UID)
+				continue
 			}
 
 			var deviceID string
 			if !util.IsStringEmpty(ed.DeviceID) {
 				deviceID, ok = oldIDToNewID[ed.DeviceID]
 				if !ok {
-					return fmt.Errorf("new device id for device %s not found for event delivery %s", ed.DeviceID, ed.UID)
+					log.Errorf("new device id for device %s not found for event delivery %s", ed.DeviceID, ed.UID)
+					continue
 				}
 			}
 
 			subscriptionID, ok := oldIDToNewID[ed.SubscriptionID]
 			if !ok {
-				return fmt.Errorf("new subscription id for subscription %s not found for event delivery %s", ed.SubscriptionID, ed.UID)
+				log.Errorf("new subscription id for subscription %s not found for event delivery %s", ed.SubscriptionID, ed.UID)
+				continue
 			}
 
 			var sourceID string
 			if ed.CLIMetadata != nil && !util.IsStringEmpty(ed.CLIMetadata.SourceID) {
 				sourceID, ok = oldIDToNewID[ed.CLIMetadata.SourceID]
 				if !ok {
-					return fmt.Errorf("new source id for source %s not found for event delivery %s", ed.CLIMetadata.SourceID, ed.UID)
+					log.Errorf("new source id for source %s not found for event delivery %s", ed.CLIMetadata.SourceID, ed.UID)
+					continue
 				}
 			}
 

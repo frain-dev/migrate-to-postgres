@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/frain-dev/migrate-to-postgres/convoy082/pkg/log"
+
 	"github.com/frain-dev/migrate-to-postgres/convoy082/util"
 
 	"github.com/oklog/ulid/v2"
@@ -57,19 +59,22 @@ func migrateSubscriptionsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 
 			projectID, ok := oldIDToNewID[s.ProjectID]
 			if !ok {
-				return fmt.Errorf("new project id for project %s not found for subscription %s", s.ProjectID, s.UID)
+				log.Errorf("new project id for project %s not found for subscription %s", s.ProjectID, s.UID)
+				continue
 			}
 
 			endpointID, ok := oldIDToNewID[s.EndpointID]
 			if !ok {
-				return fmt.Errorf("new endpoint id for endpoint %s not found for subscription %s", s.EndpointID, s.UID)
+				log.Errorf("new endpoint id for endpoint %s not found for subscription %s", s.EndpointID, s.UID)
+				continue
 			}
 
 			var deviceID string
 			if !util.IsStringEmpty(s.DeviceID) {
 				deviceID, ok = oldIDToNewID[s.DeviceID]
 				if !ok {
-					return fmt.Errorf("new device id for device %s not found for subscription %s", s.DeviceID, s.UID)
+					log.Errorf("new device id for device %s not found for subscription %s", s.DeviceID, s.UID)
+					continue
 				}
 			}
 
@@ -77,7 +82,8 @@ func migrateSubscriptionsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 			if !util.IsStringEmpty(s.SourceID) {
 				sourceID, ok = oldIDToNewID[s.SourceID]
 				if !ok {
-					return fmt.Errorf("new source id for source %s not found for subscription %s", s.SourceID, s.UID)
+					log.Errorf("new source id for source %s not found for subscription %s", s.SourceID, s.UID)
+					continue
 				}
 			}
 

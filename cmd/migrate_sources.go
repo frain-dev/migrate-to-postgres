@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/frain-dev/migrate-to-postgres/convoy082/pkg/log"
+
 	"github.com/oklog/ulid/v2"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -57,7 +59,8 @@ func migrateSourcesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 			projectID, ok := oldIDToNewID[source.ProjectID]
 			if !ok {
-				return fmt.Errorf("new project id for project %s not found for source %s", source.ProjectID, source.UID)
+				log.Errorf("new project id for project %s not found for source %s", source.ProjectID, source.UID)
+				continue
 			}
 
 			postgresSource := &datastore09.Source{

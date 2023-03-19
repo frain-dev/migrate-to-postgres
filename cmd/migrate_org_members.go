@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/frain-dev/migrate-to-postgres/convoy082/pkg/log"
+
 	"github.com/frain-dev/migrate-to-postgres/convoy082/util"
 
 	"github.com/oklog/ulid/v2"
@@ -58,25 +60,29 @@ func migrateOrgMemberCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 			projectID, ok := oldIDToNewID[orgMember.Role.Project]
 			if !ok {
-				return fmt.Errorf("new project id for project %s not found for org member %s", orgMember.Role.Project, orgMember.UID)
+				log.Errorf("new project id for project %s not found for org member %s", orgMember.Role.Project, orgMember.UID)
+				continue
 			}
 
 			var endpointID string
 			if !util.IsStringEmpty(orgMember.Role.Endpoint) {
 				endpointID, ok = oldIDToNewID[orgMember.Role.Endpoint]
 				if !ok {
-					return fmt.Errorf("new endpoint id for endpoint %s not found for org member %s", orgMember.Role.Endpoint, orgMember.UID)
+					log.Errorf("new endpoint id for endpoint %s not found for org member %s", orgMember.Role.Endpoint, orgMember.UID)
+					continue
 				}
 			}
 
 			orgID, ok := oldIDToNewID[orgMember.OrganisationID]
 			if !ok {
-				return fmt.Errorf("new org id for org %s not found for org member %s", orgMember.OrganisationID, orgMember.UID)
+				log.Errorf("new org id for org %s not found for org member %s", orgMember.OrganisationID, orgMember.UID)
+				continue
 			}
 
 			userID, ok := oldIDToNewID[orgMember.UserID]
 			if !ok {
-				return fmt.Errorf("new user id for user %s not found for org member  %s", orgMember.UserID, orgMember.UID)
+				log.Errorf("new user id for user %s not found for org member  %s", orgMember.UserID, orgMember.UID)
+				continue
 			}
 
 			postgresOrgMember := &datastore09.OrganisationMember{

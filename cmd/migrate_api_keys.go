@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/frain-dev/migrate-to-postgres/convoy082/pkg/log"
+
 	"github.com/frain-dev/migrate-to-postgres/convoy082/util"
 
 	auth09 "github.com/frain-dev/convoy/auth"
@@ -60,14 +62,16 @@ func migrateAPIKeysCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 			projectID, ok := oldIDToNewID[ak.Role.Project]
 			if !ok {
-				return fmt.Errorf("new project id for project %s not found for api key %s", ak.Role.Project, ak.UID)
+				log.Errorf("new project id for project %s not found for api key %s", ak.Role.Project, ak.UID)
+				continue
 			}
 
 			var endpointID string
 			if !util.IsStringEmpty(ak.Role.Endpoint) {
 				endpointID, ok = oldIDToNewID[ak.Role.Endpoint]
 				if !ok {
-					return fmt.Errorf("new endpoint id for endpoint %s not found for api key %s", ak.Role.Endpoint, ak.UID)
+					log.Errorf("new endpoint id for endpoint %s not found for api key %s", ak.Role.Endpoint, ak.UID)
+					continue
 				}
 			}
 
@@ -75,7 +79,8 @@ func migrateAPIKeysCollection(store datastore082.Store, dbx *sqlx.DB) error {
 			if !util.IsStringEmpty(ak.UserID) {
 				userID, ok = oldIDToNewID[ak.UserID]
 				if !ok {
-					return fmt.Errorf("new user id for user %s not found for api key %s", ak.UserID, ak.UID)
+					log.Errorf("new user id for user %s not found for api key %s", ak.UserID, ak.UID)
+					continue
 				}
 			}
 

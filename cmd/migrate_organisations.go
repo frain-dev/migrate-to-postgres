@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/frain-dev/migrate-to-postgres/convoy082/pkg/log"
+
 	"github.com/frain-dev/convoy/database/postgres"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -56,7 +58,8 @@ func migrateOrganisationsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 
 			ownerID, ok := oldIDToNewID[org.OwnerID]
 			if !ok {
-				return fmt.Errorf("new owner id for owner %s not found for organisation %s", org.OwnerID, org.UID)
+				log.Errorf("new owner id for owner %s not found for organisation %s", org.OwnerID, org.UID)
+				continue
 			}
 
 			postgresOrg := &datastore09.Organisation{

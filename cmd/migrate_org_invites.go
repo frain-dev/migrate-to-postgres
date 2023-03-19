@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/frain-dev/migrate-to-postgres/convoy082/pkg/log"
+
 	"github.com/frain-dev/migrate-to-postgres/convoy082/util"
 
 	"github.com/oklog/ulid/v2"
@@ -58,20 +60,23 @@ func migrateOrgInvitesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 			projectID, ok := oldIDToNewID[orgInvite.Role.Project]
 			if !ok {
-				return fmt.Errorf("new project id for project %s not found for org invite %s", orgInvite.Role.Project, orgInvite.UID)
+				log.Errorf("new project id for project %s not found for org invite %s", orgInvite.Role.Project, orgInvite.UID)
+				continue
 			}
 
 			var endpointID string
 			if !util.IsStringEmpty(orgInvite.Role.Endpoint) {
 				endpointID, ok = oldIDToNewID[orgInvite.Role.Endpoint]
 				if !ok {
-					return fmt.Errorf("new endpoint id for endpoint %s not found for org invite %s", orgInvite.Role.Endpoint, orgInvite.UID)
+					log.Errorf("new endpoint id for endpoint %s not found for org invite %s", orgInvite.Role.Endpoint, orgInvite.UID)
+					continue
 				}
 			}
 
 			orgID, ok := oldIDToNewID[orgInvite.OrganisationID]
 			if !ok {
-				return fmt.Errorf("new org id for org %s not found for org invite %s", orgInvite.OrganisationID, orgInvite.UID)
+				log.Errorf("new org id for org %s not found for org invite %s", orgInvite.OrganisationID, orgInvite.UID)
+				continue
 			}
 
 			postgresOrgInvite := &datastore09.OrganisationInvite{

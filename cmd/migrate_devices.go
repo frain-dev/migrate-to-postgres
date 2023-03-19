@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/frain-dev/migrate-to-postgres/convoy082/pkg/log"
+
 	"github.com/oklog/ulid/v2"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -55,12 +57,14 @@ func migrateDevicesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 			projectID, ok := oldIDToNewID[device.ProjectID]
 			if !ok {
-				return fmt.Errorf("new project id for project %s not found for device %s", device.ProjectID, device.UID)
+				log.Errorf("new project id for project %s not found for device %s", device.ProjectID, device.UID)
+				continue
 			}
 
 			endpointID, ok := oldIDToNewID[device.EndpointID]
 			if !ok {
-				return fmt.Errorf("new endpoint id for endpoint %s not found for device %s", device.EndpointID, device.UID)
+				log.Errorf("new endpoint id for endpoint %s not found for device %s", device.EndpointID, device.UID)
+				continue
 			}
 
 			postgresDevice := &datastore09.Device{
