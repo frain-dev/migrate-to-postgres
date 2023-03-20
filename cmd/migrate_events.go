@@ -55,7 +55,7 @@ func migrateEventsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 			return fmt.Errorf("failed to load events: %v", err)
 		}
-
+		fmt.Printf("batch %d loaded\n", i)
 		if len(events) == 0 {
 			break
 		}

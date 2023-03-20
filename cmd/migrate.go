@@ -44,7 +44,7 @@ type PG struct {
 	dbx *sqlx.DB
 }
 
-const batchSize int64 = 200000
+const batchSize int64 = 100000
 
 func migrate(mongoDsn, postgresDsn string) error {
 	vv := config.Configuration{
