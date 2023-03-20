@@ -43,6 +43,7 @@ func migrateEventDeliveriesCollection(store datastore082.Store, dbx *sqlx.DB) er
 	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
 
 	var lastID primitive.ObjectID
+	seen := map[string]bool{}
 
 	for i := 1; i <= numBatches; i++ {
 		var eventDeliveries []datastore082.EventDelivery
@@ -64,6 +65,13 @@ func migrateEventDeliveriesCollection(store datastore082.Store, dbx *sqlx.DB) er
 
 		for i := range eventDeliveries {
 			ed := &eventDeliveries[i]
+
+			if !seen[ed.UID] {
+				seen[ed.UID] = true
+			} else {
+				log.Errorf("event delivery %s returned multiple times", ed.UID)
+				continue
+			}
 
 			projectID, ok := oldIDToNewID[ed.ProjectID]
 			if !ok {
@@ -169,7 +177,7 @@ func migrateEventDeliveriesCollection(store datastore082.Store, dbx *sqlx.DB) er
 			oldIDToNewID[ed.UID] = postgresEventDelivery.UID
 		}
 
-		fmt.Printf("Finished %s eventDeliveries batch\n", i)
+		fmt.Printf("Finished %d eventDeliveries batch\n", i)
 	}
 
 	return nil

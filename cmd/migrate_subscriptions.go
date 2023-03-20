@@ -40,6 +40,7 @@ func migrateSubscriptionsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 
 	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
 	var lastID primitive.ObjectID
+	seen := map[string]bool{}
 
 	for i := 1; i <= numBatches; i++ {
 		var subscriptions []datastore082.Subscription
@@ -60,6 +61,13 @@ func migrateSubscriptionsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 
 		for i := range subscriptions {
 			s := &subscriptions[i]
+
+			if !seen[s.UID] {
+				seen[s.UID] = true
+			} else {
+				log.Errorf("subscription %s returned multiple times", s.UID)
+				continue
+			}
 
 			projectID, ok := oldIDToNewID[s.ProjectID]
 			if !ok {

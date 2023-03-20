@@ -40,6 +40,7 @@ func migratePortalLinksCollection(store datastore082.Store, dbx *sqlx.DB) error 
 
 	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
 	var lastID primitive.ObjectID
+	seen := map[string]bool{}
 
 	for i := 1; i <= numBatches; i++ {
 		var portalLinks []datastore082.PortalLink
@@ -60,6 +61,13 @@ func migratePortalLinksCollection(store datastore082.Store, dbx *sqlx.DB) error 
 
 		for i := range portalLinks {
 			portalLink := &portalLinks[i]
+
+			if !seen[portalLink.UID] {
+				seen[portalLink.UID] = true
+			} else {
+				log.Errorf("portal link %s returned multiple times", portalLink.UID)
+				continue
+			}
 
 			projectID, ok := oldIDToNewID[portalLink.ProjectID]
 			if !ok {

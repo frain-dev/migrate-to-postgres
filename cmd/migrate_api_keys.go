@@ -43,6 +43,7 @@ func migrateAPIKeysCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
 	var lastID primitive.ObjectID
+	seen := map[string]bool{}
 
 	for i := 1; i <= numBatches; i++ {
 		var apiKeys []datastore082.APIKey
@@ -64,6 +65,14 @@ func migrateAPIKeysCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 		for i := range apiKeys {
 			ak := &apiKeys[i]
+
+			if !seen[ak.UID] {
+				seen[ak.UID] = true
+			} else {
+				log.Errorf("api key %s returned multiple times", ak.UID)
+				continue
+			}
+
 			var ok bool
 
 			var projectID string

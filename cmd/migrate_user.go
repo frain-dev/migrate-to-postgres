@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/frain-dev/migrate-to-postgres/convoy082/pkg/log"
+
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"github.com/frain-dev/convoy/database/postgres"
@@ -36,6 +38,7 @@ func migrateUserCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
 	var lastID primitive.ObjectID
+	seen := map[string]bool{}
 
 	for i := 1; i <= numBatches; i++ {
 		var users []datastore082.User
@@ -56,6 +59,13 @@ func migrateUserCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 		for i := range users {
 			user := &users[i]
+
+			if !seen[user.UID] {
+				seen[user.UID] = true
+			} else {
+				log.Errorf("user %s returned multiple times", user.UID)
+				continue
+			}
 
 			postgresUser := &datastore09.User{
 				UID:                        ulid.Make().String(),

@@ -39,6 +39,7 @@ func migrateOrganisationsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 
 	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
 	var lastID primitive.ObjectID
+	seen := map[string]bool{}
 
 	for i := 1; i <= numBatches; i++ {
 		var organisations []datastore082.Organisation
@@ -59,6 +60,13 @@ func migrateOrganisationsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 
 		for i := range organisations {
 			org := &organisations[i]
+
+			if !seen[org.UID] {
+				seen[org.UID] = true
+			} else {
+				log.Errorf("org %s returned multiple times", org.UID)
+				continue
+			}
 
 			ownerID, ok := oldIDToNewID[org.OwnerID]
 			if !ok {

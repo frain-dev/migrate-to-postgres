@@ -40,6 +40,7 @@ func migrateSourcesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
 	var lastID primitive.ObjectID
+	seen := map[string]bool{}
 
 	for i := 1; i <= numBatches; i++ {
 		var sources []datastore082.Source
@@ -60,6 +61,13 @@ func migrateSourcesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 		for i := range sources {
 			source := &sources[i]
+
+			if !seen[source.UID] {
+				seen[source.UID] = true
+			} else {
+				log.Errorf("source %s returned multiple times", source.UID)
+				continue
+			}
 
 			projectID, ok := oldIDToNewID[source.ProjectID]
 			if !ok {

@@ -41,6 +41,7 @@ func migrateOrgInvitesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
 	var lastID primitive.ObjectID
+	seen := map[string]bool{}
 
 	for i := 1; i <= numBatches; i++ {
 		var organisationInvites []datastore082.OrganisationInvite
@@ -61,6 +62,14 @@ func migrateOrgInvitesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 		for i := range organisationInvites {
 			orgInvite := &organisationInvites[i]
+
+			if !seen[orgInvite.UID] {
+				seen[orgInvite.UID] = true
+			} else {
+				log.Errorf("org invite %s returned multiple times", orgInvite.UID)
+				continue
+			}
+
 			var ok bool
 
 			var projectID string

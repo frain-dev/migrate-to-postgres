@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/frain-dev/migrate-to-postgres/convoy082/pkg/log"
+
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"github.com/oklog/ulid/v2"
@@ -38,6 +40,7 @@ func migrateConfigurationsCollection(store datastore082.Store, dbx *sqlx.DB) err
 
 	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
 	var lastID primitive.ObjectID
+	seen := map[string]bool{}
 
 	for i := 1; i <= numBatches; i++ {
 		var configurations []datastore082.Configuration
@@ -58,6 +61,13 @@ func migrateConfigurationsCollection(store datastore082.Store, dbx *sqlx.DB) err
 
 		for i := range configurations {
 			cfg := &configurations[i]
+
+			if !seen[cfg.UID] {
+				seen[cfg.UID] = true
+			} else {
+				log.Errorf("config %s returned multiple times", cfg.UID)
+				continue
+			}
 
 			postgresCfg := &datastore09.Configuration{
 				UID:                ulid.Make().String(),

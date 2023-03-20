@@ -40,6 +40,7 @@ func migrateEndpointsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 	numBatches := int(math.Ceil(float64(totalEndpoints) / float64(batchSize)))
 	var lastID primitive.ObjectID
+	seen := map[string]bool{}
 
 	for i := 1; i <= numBatches; i++ {
 		var endpoints []datastore082.Endpoint
@@ -60,6 +61,13 @@ func migrateEndpointsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 		for i := range endpoints {
 			endpoint := &endpoints[i]
+
+			if !seen[endpoint.UID] {
+				seen[endpoint.UID] = true
+			} else {
+				log.Errorf("endpoint %s returned multiple times", endpoint.UID)
+				continue
+			}
 
 			projectID, ok := oldIDToNewID[endpoint.ProjectID]
 			if !ok {

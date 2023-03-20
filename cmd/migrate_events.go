@@ -41,7 +41,7 @@ func migrateEventsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 	}
 
 	var lastID primitive.ObjectID
-
+	seen := map[string]bool{}
 	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
 
 	for i := 1; i <= numBatches; i++ {
@@ -64,6 +64,13 @@ func migrateEventsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 		for i := range events {
 			event := &events[i]
+
+			if !seen[event.UID] {
+				seen[event.UID] = true
+			} else {
+				log.Errorf("event %s returned multiple times", event.UID)
+				continue
+			}
 
 			projectID, ok := oldIDToNewID[event.ProjectID]
 			if !ok {
@@ -118,7 +125,7 @@ func migrateEventsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 			oldIDToNewID[event.UID] = postgresEvent.UID
 		}
 
-		fmt.Printf("Finished %s events batch\n", i)
+		fmt.Printf("Finished %d events batch\n", i)
 	}
 
 	return nil

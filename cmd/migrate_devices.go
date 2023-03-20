@@ -38,6 +38,7 @@ func migrateDevicesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
 	var lastID primitive.ObjectID
+	seen := map[string]bool{}
 
 	for i := 1; i <= numBatches; i++ {
 		var devices []datastore082.Device
@@ -58,6 +59,13 @@ func migrateDevicesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 		for i := range devices {
 			device := &devices[i]
+
+			if !seen[device.UID] {
+				seen[device.UID] = true
+			} else {
+				log.Errorf("device %s returned multiple times", device.UID)
+				continue
+			}
 
 			projectID, ok := oldIDToNewID[device.ProjectID]
 			if !ok {
