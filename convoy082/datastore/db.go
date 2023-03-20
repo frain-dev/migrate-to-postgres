@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"time"
 
+	pager "github.com/danvixent/mongo-go-pagination"
 	"github.com/frain-dev/migrate-to-postgres/convoy082/pkg/log"
-	pager "github.com/gobeam/mongo-go-pagination"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"

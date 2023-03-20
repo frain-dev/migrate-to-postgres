@@ -35,7 +35,6 @@ func migrateProjectsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		return fmt.Errorf("faild to count projects: %v", err)
 	}
 
-	var batchSize int64 = 1000
 	numBatches := int(math.Ceil(float64(totalProjects) / float64(batchSize)))
 
 	for i := 1; i <= numBatches; i++ {

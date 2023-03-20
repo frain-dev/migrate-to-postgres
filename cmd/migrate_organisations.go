@@ -35,7 +35,6 @@ func migrateOrganisationsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 
 	pgOrgRepo := postgres.NewOrgRepo(&PG{dbx: dbx})
 
-	var batchSize int64 = 1000
 	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
 
 	for i := 1; i <= numBatches; i++ {
