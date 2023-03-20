@@ -35,11 +35,12 @@ func migrateUserCollection(store datastore082.Store, dbx *sqlx.DB) error {
 	pgUserRepo := postgres.NewUserRepo(&PG{dbx: dbx})
 
 	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
+	var lastID primitive.ObjectID
 
 	for i := 1; i <= numBatches; i++ {
 		var users []datastore082.User
 
-		_, err = store.FindMany(ctx, bson.M{}, nil, nil, int64(i), batchSize, &users)
+		err = store.FindMany(ctx, bson.M{}, nil, nil, lastID, batchSize, &users)
 		if err != nil {
 			if errors.Is(err, mongo.ErrNoDocuments) {
 				break
@@ -51,6 +52,7 @@ func migrateUserCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		if len(users) == 0 {
 			break
 		}
+		lastID = users[len(users)-1].ID
 
 		for i := range users {
 			user := &users[i]

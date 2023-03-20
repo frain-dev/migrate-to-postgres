@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 
+	"go.mongodb.org/mongo-driver/bson/primitive"
+
 	"github.com/frain-dev/migrate-to-postgres/convoy082/pkg/log"
 
 	"github.com/oklog/ulid/v2"
@@ -35,11 +37,12 @@ func migrateDevicesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 	}
 
 	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
+	var lastID primitive.ObjectID
 
 	for i := 1; i <= numBatches; i++ {
 		var devices []datastore082.Device
 
-		_, err = store.FindMany(ctx, bson.M{}, nil, nil, int64(i), batchSize, &devices)
+		err = store.FindMany(ctx, bson.M{}, nil, nil, lastID, batchSize, &devices)
 		if err != nil {
 			if errors.Is(err, mongo.ErrNoDocuments) {
 				break
@@ -51,6 +54,7 @@ func migrateDevicesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		if len(devices) == 0 {
 			break
 		}
+		lastID = devices[len(devices)-1].ID
 
 		for i := range devices {
 			device := &devices[i]

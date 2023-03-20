@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 
+	"go.mongodb.org/mongo-driver/bson/primitive"
+
 	"github.com/frain-dev/migrate-to-postgres/convoy082/pkg/log"
 
 	"github.com/frain-dev/migrate-to-postgres/convoy082/util"
@@ -38,12 +40,14 @@ func migrateEventsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		return fmt.Errorf("faild to count events: %v", err)
 	}
 
+	var lastID primitive.ObjectID
+
 	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
 
 	for i := 1; i <= numBatches; i++ {
 		var events []datastore082.Event
 
-		_, err = store.FindMany(ctx, bson.M{}, nil, nil, int64(i), batchSize, &events)
+		err = store.FindMany(ctx, bson.M{}, nil, nil, lastID, batchSize, &events)
 		if err != nil {
 			if errors.Is(err, mongo.ErrNoDocuments) {
 				break
@@ -55,6 +59,8 @@ func migrateEventsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		if len(events) == 0 {
 			break
 		}
+
+		lastID = events[len(events)-1].ID
 
 		for i := range events {
 			event := &events[i]
@@ -111,6 +117,8 @@ func migrateEventsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 			oldIDToNewID[event.UID] = postgresEvent.UID
 		}
+
+		fmt.Printf("Finished %s events batch\n", i)
 	}
 
 	return nil

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 
+	"go.mongodb.org/mongo-driver/bson/primitive"
+
 	"github.com/frain-dev/migrate-to-postgres/convoy082/pkg/log"
 
 	"github.com/frain-dev/migrate-to-postgres/convoy082/util"
@@ -37,11 +39,12 @@ func migratePortalLinksCollection(store datastore082.Store, dbx *sqlx.DB) error 
 	}
 
 	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
+	var lastID primitive.ObjectID
 
 	for i := 1; i <= numBatches; i++ {
 		var portalLinks []datastore082.PortalLink
 
-		_, err = store.FindMany(ctx, bson.M{}, nil, nil, int64(i), batchSize, &portalLinks)
+		err = store.FindMany(ctx, bson.M{}, nil, nil, lastID, batchSize, &portalLinks)
 		if err != nil {
 			if errors.Is(err, mongo.ErrNoDocuments) {
 				break
@@ -53,6 +56,7 @@ func migratePortalLinksCollection(store datastore082.Store, dbx *sqlx.DB) error 
 		if len(portalLinks) == 0 {
 			break
 		}
+		lastID = portalLinks[len(portalLinks)-1].ID
 
 		for i := range portalLinks {
 			portalLink := &portalLinks[i]

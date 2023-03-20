@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 
+	"go.mongodb.org/mongo-driver/bson/primitive"
+
 	"github.com/frain-dev/migrate-to-postgres/convoy082/pkg/log"
 
 	"github.com/frain-dev/migrate-to-postgres/convoy082/util"
@@ -37,11 +39,12 @@ func migrateSubscriptionsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 	}
 
 	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
+	var lastID primitive.ObjectID
 
 	for i := 1; i <= numBatches; i++ {
 		var subscriptions []datastore082.Subscription
 
-		_, err = store.FindMany(ctx, bson.M{}, nil, nil, int64(i), batchSize, &subscriptions)
+		err = store.FindMany(ctx, bson.M{}, nil, nil, lastID, batchSize, &subscriptions)
 		if err != nil {
 			if errors.Is(err, mongo.ErrNoDocuments) {
 				break
@@ -53,6 +56,7 @@ func migrateSubscriptionsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 		if len(subscriptions) == 0 {
 			break
 		}
+		lastID = subscriptions[len(subscriptions)-1].ID
 
 		for i := range subscriptions {
 			s := &subscriptions[i]

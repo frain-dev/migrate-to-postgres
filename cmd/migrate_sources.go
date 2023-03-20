@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 
+	"go.mongodb.org/mongo-driver/bson/primitive"
+
 	"github.com/frain-dev/migrate-to-postgres/convoy082/pkg/log"
 
 	"github.com/oklog/ulid/v2"
@@ -37,11 +39,12 @@ func migrateSourcesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 	}
 
 	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
+	var lastID primitive.ObjectID
 
 	for i := 1; i <= numBatches; i++ {
 		var sources []datastore082.Source
 
-		_, err = store.FindMany(ctx, bson.M{}, nil, nil, int64(i), batchSize, &sources)
+		err = store.FindMany(ctx, bson.M{}, nil, nil, lastID, batchSize, &sources)
 		if err != nil {
 			if errors.Is(err, mongo.ErrNoDocuments) {
 				break
@@ -53,6 +56,7 @@ func migrateSourcesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		if len(sources) == 0 {
 			break
 		}
+		lastID = sources[len(sources)-1].ID
 
 		for i := range sources {
 			source := &sources[i]

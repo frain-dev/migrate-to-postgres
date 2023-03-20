@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 
+	"go.mongodb.org/mongo-driver/bson/primitive"
+
 	"github.com/oklog/ulid/v2"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -35,11 +37,12 @@ func migrateConfigurationsCollection(store datastore082.Store, dbx *sqlx.DB) err
 	}
 
 	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
+	var lastID primitive.ObjectID
 
 	for i := 1; i <= numBatches; i++ {
 		var configurations []datastore082.Configuration
 
-		_, err = store.FindMany(ctx, bson.M{}, nil, nil, int64(i), batchSize, &configurations)
+		err = store.FindMany(ctx, bson.M{}, nil, nil, lastID, batchSize, &configurations)
 		if err != nil {
 			if errors.Is(err, mongo.ErrNoDocuments) {
 				break
@@ -51,6 +54,7 @@ func migrateConfigurationsCollection(store datastore082.Store, dbx *sqlx.DB) err
 		if len(configurations) == 0 {
 			break
 		}
+		lastID = configurations[len(configurations)-1].ID
 
 		for i := range configurations {
 			cfg := &configurations[i]

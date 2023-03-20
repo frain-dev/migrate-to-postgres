@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 
+	"go.mongodb.org/mongo-driver/bson/primitive"
+
 	"github.com/frain-dev/migrate-to-postgres/convoy082/pkg/log"
 
 	"github.com/frain-dev/convoy/config"
@@ -36,11 +38,12 @@ func migrateProjectsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 	}
 
 	numBatches := int(math.Ceil(float64(totalProjects) / float64(batchSize)))
+	var lastID primitive.ObjectID
 
 	for i := 1; i <= numBatches; i++ {
 		var projects []datastore082.Project
 
-		_, err = store.FindMany(ctx, bson.M{}, nil, nil, int64(i), batchSize, &projects)
+		err = store.FindMany(ctx, bson.M{}, nil, nil, lastID, batchSize, &projects)
 		if err != nil {
 			if errors.Is(err, mongo.ErrNoDocuments) {
 				break
@@ -52,6 +55,7 @@ func migrateProjectsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		if len(projects) == 0 {
 			break
 		}
+		lastID = projects[len(projects)-1].ID
 
 		for i := range projects {
 			project := &projects[i]

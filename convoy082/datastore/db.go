@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"time"
 
-	pager "github.com/danvixent/mongo-go-pagination"
 	"github.com/frain-dev/migrate-to-postgres/convoy082/pkg/log"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -51,7 +50,7 @@ type Store interface {
 
 	FindByID(ctx context.Context, id string, projection bson.M, result interface{}) error
 	FindOne(ctx context.Context, filter, projection bson.M, result interface{}) error
-	FindMany(ctx context.Context, filter, projection bson.M, sort interface{}, page, limit int64, results interface{}) (PaginationData, error)
+	FindMany(ctx context.Context, filter, projection bson.M, sort interface{}, lastID primitive.ObjectID, limit int64, results interface{}) error
 	FindManyWithDeletedAt(ctx context.Context, filter, projection bson.M, sort interface{}, limit, skip int64, results interface{}) error
 	FindAll(ctx context.Context, filter bson.M, sort interface{}, projection, results interface{}) error
 
@@ -187,38 +186,47 @@ func (d *MongoStore) FindOne(ctx context.Context, filter, projection bson.M, res
 	return collection.FindOne(ctx, filter, ops).Decode(result)
 }
 
-func (d *MongoStore) FindMany(ctx context.Context, filter, projection bson.M, sort interface{}, page, limit int64, results interface{}) (PaginationData, error) {
+func (d *MongoStore) FindMany(ctx context.Context, filter, projection bson.M, sort interface{}, lastID primitive.ObjectID, limit int64, results interface{}) error {
 	if !IsValidPointer(results) {
 		log.Errorf("Invalid Pointer Type")
-		return PaginationData{}, ErrInvalidPtr
+		return ErrInvalidPtr
 	}
 
 	if filter == nil {
 		filter = bson.M{}
 	}
 
+	if !lastID.IsZero() {
+		filter["_id"] = bson.M{"$gt": lastID}
+	}
+
 	filter["deleted_at"] = nil
 
 	col, err := d.retrieveCollection(ctx)
 	if err != nil {
-		return PaginationData{}, err
+		return err
 	}
 	collection := d.Database.Collection(col)
 
-	paginatedData, err := pager.
-		New(collection).
-		Context(ctx).
-		Limit(limit).
-		Page(page).
-		Filter(filter).
-		Sort("_id", 1).
-		Decode(results).
-		Find()
-	if err != nil {
-		return PaginationData{}, err
+	ops := options.Find()
+	if limit > 0 {
+		ops.Limit = &limit
 	}
 
-	return PaginationData(paginatedData.Pagination), nil
+	if projection != nil {
+		ops.Projection = projection
+	}
+	if sort != nil {
+		ops.Sort = bson.M{"_id": 1}
+	}
+
+	cursor, err := collection.Find(ctx, filter, ops)
+	if err != nil {
+		return err
+	}
+	defer cursor.Close(ctx)
+
+	return cursor.All(ctx, results)
 }
 
 func (d *MongoStore) FindManyWithDeletedAt(ctx context.Context, filter, projection bson.M, sort interface{}, limit, skip int64, results interface{}) error {

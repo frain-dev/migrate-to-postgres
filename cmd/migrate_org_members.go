@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 
+	"go.mongodb.org/mongo-driver/bson/primitive"
+
 	"github.com/frain-dev/migrate-to-postgres/convoy082/pkg/log"
 
 	"github.com/frain-dev/migrate-to-postgres/convoy082/util"
@@ -38,11 +40,12 @@ func migrateOrgMemberCollection(store datastore082.Store, dbx *sqlx.DB) error {
 	}
 
 	numBatches := int(math.Ceil(float64(totalEndpoints) / float64(batchSize)))
+	var lastID primitive.ObjectID
 
 	for i := 1; i <= numBatches; i++ {
 		var organisationMembers []datastore082.OrganisationMember
 
-		_, err = store.FindMany(ctx, bson.M{}, nil, nil, int64(i), batchSize, &organisationMembers)
+		err = store.FindMany(ctx, bson.M{}, nil, nil, lastID, batchSize, &organisationMembers)
 		if err != nil {
 			if errors.Is(err, mongo.ErrNoDocuments) {
 				break
@@ -54,6 +57,7 @@ func migrateOrgMemberCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		if len(organisationMembers) == 0 {
 			break
 		}
+		lastID = organisationMembers[len(organisationMembers)-1].ID
 
 		for i := range organisationMembers {
 			orgMember := &organisationMembers[i]
