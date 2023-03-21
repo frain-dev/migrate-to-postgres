@@ -59,6 +59,8 @@ func migrateEventDeliveriesCollection(store datastore082.Store, dbx *sqlx.DB) er
 			return fmt.Errorf("failed to load eventDeliveries: %v", err)
 		}
 		fmt.Printf("batch %d loaded\n", i)
+		fmt.Println("len", len(eventDeliveries))
+		fmt.Println("lastID", lastID)
 
 		if len(eventDeliveries) == 0 {
 			break
