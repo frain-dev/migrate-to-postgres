@@ -33,7 +33,7 @@ func migrateEventDeliveriesCollection(store datastore082.Store, dbx *sqlx.DB) er
 
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.EventDeliveryCollection)
 
-	const batchSize int64 = 1 // very precise, see https://github.com/jmoiron/sqlx/issues/552#issuecomment-665630408
+	const batchSize int64 = 10 // very precise, see https://github.com/jmoiron/sqlx/issues/552#issuecomment-665630408
 
 	pg := &PG{db: dbx}
 
