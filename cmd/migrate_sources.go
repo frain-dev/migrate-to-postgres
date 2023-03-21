@@ -159,7 +159,7 @@ const (
         hmac_hash,hmac_header,hmac_secret,hmac_encoding
     )
     VALUES (
-        :id,type, :basic_username, :basic_password,
+        :id, :type, :basic_username, :basic_password,
         :api_key_header_name, :api_key_header_value,
         :hmac_hash, :hmac_header, :hmac_secret, :hmac_encoding
     )
