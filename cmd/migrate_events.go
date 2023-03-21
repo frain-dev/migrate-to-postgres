@@ -193,9 +193,11 @@ func (e *PG) SaveEvents(ctx context.Context, events []*datastore09.Event) error 
 		return err
 	}
 
-	_, err = tx.NamedExecContext(ctx, createEventEndpoints, evEndpoints)
-	if err != nil {
-		return err
+	if len(evEndpoints) > 0 {
+		_, err = tx.NamedExecContext(ctx, createEventEndpoints, evEndpoints)
+		if err != nil {
+			return err
+		}
 	}
 
 	return tx.Commit()
