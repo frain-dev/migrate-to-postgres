@@ -33,7 +33,7 @@ func migrateEventDeliveriesCollection(store datastore082.Store, dbx *sqlx.DB) er
 
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.EventDeliveryCollection)
 
-	const batchSize int64 = 1 // very precise, see https://github.com/jmoiron/sqlx/issues/552#issuecomment-665630408
+	const batchSize int64 = 3854 // very precise, see https://github.com/jmoiron/sqlx/issues/552#issuecomment-665630408
 
 	pg := (&PG{db: dbx})
 
@@ -192,7 +192,11 @@ func migrateEventDeliveriesCollection(store datastore082.Store, dbx *sqlx.DB) er
 
 const (
 	saveEventDeliveries = `
-    INSERT INTO convoy.event_deliveries (id,project_id,event_id,endpoint_id,device_id,subscription_id,headers,attempts,status,metadata,cli_metadata,description,created_at,updated_at,deleted_at)
+    INSERT INTO convoy.event_deliveries (
+          id, project_id, event_id, endpoint_id, device_id, subscription_id,
+          headers, attempts, status, metadata, cli_metadata, description,
+          created_at, updated_at, deleted_at
+          )
     VALUES (
         :id, :project_id, :event_id, :endpoint_id, :device_id,
         :subscription_id, :headers, :attempts, :status, :metadata,
