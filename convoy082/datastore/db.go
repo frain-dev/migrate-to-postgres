@@ -216,9 +216,8 @@ func (d *MongoStore) FindMany(ctx context.Context, filter, projection bson.M, so
 	if projection != nil {
 		ops.Projection = projection
 	}
-	if sort != nil {
-		ops.Sort = bson.M{"_id": 1}
-	}
+
+	ops.Sort = bson.M{"_id": 1}
 
 	cursor, err := collection.Find(ctx, filter, ops)
 	if err != nil {
