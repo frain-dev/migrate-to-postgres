@@ -14,8 +14,6 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 
-	"github.com/frain-dev/convoy/database/postgres"
-
 	"github.com/jmoiron/sqlx"
 
 	datastore09 "github.com/frain-dev/convoy/datastore"
@@ -29,7 +27,7 @@ func migrateDevicesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.DeviceCollection)
 
-	pgDeviceRepo := postgres.NewDeviceRepo(&PG{dbx: dbx})
+	pg := &PG{db: dbx}
 
 	count, err := store.Count(ctx, bson.M{})
 	if err != nil {
@@ -57,6 +55,8 @@ func migrateDevicesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		}
 		lastID = devices[len(devices)-1].ID
 
+		postgresDevices := make([]*datastore09.Device, 0, len(devices))
+
 		for i := range devices {
 			device := &devices[i]
 
@@ -79,7 +79,7 @@ func migrateDevicesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 				continue
 			}
 
-			postgresDevice := &datastore09.Device{
+			postgresDevice := datastore09.Device{
 				UID:        ulid.Make().String(),
 				ProjectID:  projectID,
 				EndpointID: endpointID,
@@ -91,14 +91,48 @@ func migrateDevicesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 				DeletedAt:  getDeletedAt(device.DeletedAt),
 			}
 
-			err = pgDeviceRepo.CreateDevice(ctx, postgresDevice)
-			if err != nil {
-				return fmt.Errorf("failed to save postgres device: %v", err)
-			}
-
 			oldIDToNewID[device.UID] = postgresDevice.UID
+			postgresDevices = append(postgresDevices, &postgresDevice)
+		}
+
+		if len(postgresDevices) > 0 {
+			err = pg.SaveDevices(ctx, postgresDevices)
+			if err != nil {
+				return fmt.Errorf("failed to save postgres devices: %v", err)
+			}
 		}
 	}
 
 	return nil
+}
+
+const (
+	saveDevices = `
+	INSERT INTO convoy.devices (id, project_id, endpoint_id, host_name, status, last_seen_at, created_at, updated_at, deleted_at)
+	VALUES (
+	    :id, :project_id, :endpoint_id, :host_name, :status,
+	    :last_seen_at, :created_at, :updated_at, :deleted_at
+	)
+	`
+)
+
+func (d *PG) SaveDevices(ctx context.Context, devices []*datastore09.Device) error {
+	values := make([]map[string]interface{}, 0, len(devices))
+
+	for _, device := range devices {
+		values = append(values, map[string]interface{}{
+			"id":           device.UID,
+			"project_id":   device.ProjectID,
+			"endpoint_id":  device.EndpointID,
+			"host_name":    device.HostName,
+			"status":       device.Status,
+			"last_seen_at": device.LastSeenAt,
+			"created_at":   device.CreatedAt,
+			"updated_at":   device.UpdatedAt,
+			"deleted_at":   device.DeletedAt,
+		})
+	}
+
+	_, err := d.db.NamedExecContext(ctx, saveDevices, values)
+	return err
 }

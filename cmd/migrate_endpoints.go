@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"math"
@@ -13,8 +14,6 @@ import (
 	"github.com/oklog/ulid/v2"
 
 	"go.mongodb.org/mongo-driver/bson"
-
-	"github.com/frain-dev/convoy/database/postgres"
 
 	"github.com/jmoiron/sqlx"
 
@@ -31,7 +30,7 @@ func migrateEndpointsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.EndpointCollection)
 
-	pgProjectRepo := postgres.NewEndpointRepo(&PG{dbx: dbx})
+	pg := &PG{db: dbx}
 
 	totalEndpoints, err := store.Count(ctx, bson.M{})
 	if err != nil {
@@ -59,6 +58,8 @@ func migrateEndpointsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		}
 		lastID = endpoints[len(endpoints)-1].ID
 
+		postgresEndpoints := make([]*datastore09.Endpoint, 0, len(endpoints))
+
 		for i := range endpoints {
 			endpoint := &endpoints[i]
 
@@ -75,7 +76,7 @@ func migrateEndpointsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 				continue
 			}
 
-			postgresEndpoint := &datastore09.Endpoint{
+			postgresEndpoint := datastore09.Endpoint{
 				UID:                ulid.Make().String(),
 				ProjectID:          projectID,
 				OwnerID:            endpoint.OwnerID,
@@ -123,14 +124,77 @@ func migrateEndpointsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 				postgresEndpoint.Secrets = datastore09.Secrets{}
 			}
 
-			err = pgProjectRepo.CreateEndpoint(ctx, postgresEndpoint, postgresEndpoint.ProjectID)
-			if err != nil {
-				return fmt.Errorf("failed to save postgres endpoint: %v", err)
-			}
-
 			oldIDToNewID[endpoint.UID] = postgresEndpoint.UID
+			postgresEndpoints = append(postgresEndpoints, &postgresEndpoint)
+		}
+
+		if len(postgresEndpoints) > 0 {
+			err = pg.SaveEndpoints(ctx, postgresEndpoints)
+			if err != nil {
+				return fmt.Errorf("failed to save postgres endpoints: %v", err)
+			}
 		}
 	}
 
 	return nil
+}
+
+const (
+	saveEndpoints = `
+	INSERT INTO convoy.endpoints (
+		id, title, status, secrets, owner_id, target_url, description, http_timeout,
+		rate_limit, rate_limit_duration, advanced_signatures, slack_webhook_url,
+		support_email, app_id, project_id, authentication_type, authentication_type_api_key_header_name,
+		authentication_type_api_key_header_value, created_at, updated_at, deleted_at
+	)
+	VALUES
+	  (
+		:id, :title, :status, :secrets, :owner_id, :target_url, :description, :http_timeout,
+		:rate_limit, :rate_limit_duration, :advanced_signatures, :slack_webhook_url,
+		:support_email, :app_id, :project_id, :authentication_type, :authentication_type_api_key_header_name,
+		:authentication_type_api_key_header_value, :created_at, :updated_at, :deleted_at
+	  )
+	`
+)
+
+func (e *PG) SaveEndpoints(ctx context.Context, endpoints []*datastore09.Endpoint) error {
+	values := make([]map[string]interface{}, 0, len(endpoints))
+
+	for _, endpoint := range endpoints {
+		ac := endpoint.GetAuthConfig()
+
+		values = append(values, map[string]interface{}{
+			"id":                  endpoint.UID,
+			"title":               endpoint.Title,
+			"status":              endpoint.Status,
+			"secrets":             endpoint.Secrets,
+			"owner_id":            endpoint.OwnerID,
+			"target_url":          endpoint.TargetURL,
+			"description":         endpoint.Description,
+			"http_timeout":        endpoint.HttpTimeout,
+			"rate_limit":          endpoint.RateLimit,
+			"rate_limit_duration": endpoint.RateLimitDuration,
+			"advanced_signatures": endpoint.AdvancedSignatures,
+			"slack_webhook_url":   endpoint.SlackWebhookURL,
+			"support_email":       endpoint.SupportEmail,
+			"app_id":              endpoint.AppID,
+			"project_id":          endpoint.ProjectID,
+			"authentication_type": ac.Type,
+			"authentication_type_api_key_header_name":  ac.ApiKey.HeaderName,
+			"authentication_type_api_key_header_value": ac.ApiKey.HeaderValue,
+			"created_at": endpoint.CreatedAt,
+			"updated_at": endpoint.UpdatedAt,
+			"deleted_at": endpoint.DeletedAt,
+		})
+	}
+
+	_, err := e.db.NamedExecContext(ctx, saveEndpoints, values)
+	return err
+}
+
+func rollbackTx(tx *sqlx.Tx) {
+	err := tx.Rollback()
+	if err != nil && !errors.Is(err, sql.ErrTxDone) {
+		log.WithError(err).Error("failed to rollback tx")
+	}
 }

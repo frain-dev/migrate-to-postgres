@@ -10,7 +10,6 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
-	"github.com/frain-dev/convoy/database/postgres"
 	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/jmoiron/sqlx"
@@ -34,7 +33,7 @@ func migrateUserCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		return fmt.Errorf("faild to count users: %v", err)
 	}
 
-	pgUserRepo := postgres.NewUserRepo(&PG{dbx: dbx})
+	pg := &PG{db: dbx}
 
 	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
 	var lastID primitive.ObjectID
@@ -57,6 +56,8 @@ func migrateUserCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		}
 		lastID = users[len(users)-1].ID
 
+		postgresUsers := make([]*datastore09.User, 0, len(users))
+
 		for i := range users {
 			user := &users[i]
 
@@ -67,7 +68,7 @@ func migrateUserCollection(store datastore082.Store, dbx *sqlx.DB) error {
 				continue
 			}
 
-			postgresUser := &datastore09.User{
+			postgresUser := datastore09.User{
 				UID:                        ulid.Make().String(),
 				FirstName:                  user.FirstName,
 				LastName:                   user.LastName,
@@ -83,17 +84,58 @@ func migrateUserCollection(store datastore082.Store, dbx *sqlx.DB) error {
 				EmailVerificationExpiresAt: user.EmailVerificationExpiresAt.Time(),
 			}
 
-			err = pgUserRepo.CreateUser(ctx, postgresUser)
-			if err != nil {
-				fmt.Printf("user %+v\n", postgresUser)
-				return fmt.Errorf("failed to save postgres user: %v", err)
-			}
-
 			oldIDToNewID[user.UID] = postgresUser.UID
+			postgresUsers = append(postgresUsers, &postgresUser)
+		}
+
+		if len(postgresUsers) > 0 {
+			err = pg.SaveUsers(ctx, postgresUsers)
+			if err != nil {
+				return fmt.Errorf("failed to save postgres users: %v", err)
+			}
 		}
 	}
 
 	return nil
+}
+
+const (
+	saveUsers = `
+    INSERT INTO convoy.users (
+		id,first_name,last_name,email,password,
+        email_verified,reset_password_token, email_verification_token,
+        reset_password_expires_at,email_verification_expires_at, created_at, updated_at, deleted_at)
+    VALUES (
+        :id, :first_name, :last_name, :email, :password,
+        :email_verified, :reset_password_token, :email_verification_token,
+        :reset_password_expires_at, :email_verification_expires_at, :created_at, :updated_at, :deleted_at
+    )
+    `
+)
+
+func (u *PG) SaveUsers(ctx context.Context, users []*datastore09.User) error {
+	values := make([]map[string]interface{}, 0, len(users))
+
+	for _, user := range users {
+		values = append(values, map[string]interface{}{
+			"id":                            user.UID,
+			"first_name":                    user.FirstName,
+			"last_name":                     user.LastName,
+			"email":                         user.Email,
+			"password":                      user.Password,
+			"email_verified":                user.EmailVerified,
+			"reset_password_token":          user.ResetPasswordToken,
+			"email_verification_token":      user.EmailVerificationToken,
+			"reset_password_expires_at":     user.ResetPasswordExpiresAt,
+			"email_verification_expires_at": user.EmailVerificationExpiresAt,
+			"created_at":                    user.CreatedAt,
+			"updated_at":                    user.UpdatedAt,
+			"deleted_at":                    user.DeletedAt,
+		})
+	}
+
+	_, err := u.db.NamedExecContext(ctx, saveUsers, values)
+	return err
 }
 
 func getDeletedAt(t *primitive.DateTime) null.Time {

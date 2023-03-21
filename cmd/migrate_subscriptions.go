@@ -16,8 +16,6 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 
-	"github.com/frain-dev/convoy/database/postgres"
-
 	"github.com/jmoiron/sqlx"
 
 	datastore09 "github.com/frain-dev/convoy/datastore"
@@ -31,7 +29,7 @@ func migrateSubscriptionsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.SubscriptionCollection)
 
-	pgSubscriptionRepo := postgres.NewSubscriptionRepo(&PG{dbx: dbx})
+	pg := &PG{db: dbx}
 
 	count, err := store.Count(ctx, bson.M{})
 	if err != nil {
@@ -58,6 +56,7 @@ func migrateSubscriptionsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 			break
 		}
 		lastID = subscriptions[len(subscriptions)-1].ID
+		postgresSubscriptions := make([]*datastore09.Subscription, 0, len(subscriptions))
 
 		for i := range subscriptions {
 			s := &subscriptions[i]
@@ -99,7 +98,7 @@ func migrateSubscriptionsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 				}
 			}
 
-			postgresSubscription := &datastore09.Subscription{
+			postgresSubscription := datastore09.Subscription{
 				UID:        ulid.Make().String(),
 				Name:       s.Name,
 				Type:       datastore09.SubscriptionType(s.Type),
@@ -155,14 +154,92 @@ func migrateSubscriptionsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 				}
 			}
 
-			err = pgSubscriptionRepo.CreateSubscription(ctx, postgresSubscription.ProjectID, postgresSubscription)
-			if err != nil {
-				return fmt.Errorf("failed to save postgres subscription: %v", err)
-			}
-
 			oldIDToNewID[s.UID] = postgresSubscription.UID
+			postgresSubscriptions = append(postgresSubscriptions, &postgresSubscription)
+		}
+
+		if len(postgresSubscriptions) > 0 {
+			err = pg.SaveSubscriptions(ctx, postgresSubscriptions)
+			if err != nil {
+				return fmt.Errorf("failed to save postgres subscriptions: %v", err)
+			}
 		}
 	}
 
 	return nil
+}
+
+const (
+	createSubscription = `
+    INSERT INTO convoy.subscriptions (
+    id,name,type,
+	project_id,endpoint_id,device_id,
+	source_id,alert_config_count,alert_config_threshold,
+	retry_config_type,retry_config_duration,
+	retry_config_retry_count,filter_config_event_types,
+	filter_config_filter_headers,filter_config_filter_body,
+	rate_limit_config_count,rate_limit_config_duration,
+	created_at, updated_at, deleted_at
+	)
+    VALUES ( 
+        :id, :name, :type,
+		:project_id, :endpoint_id, :device_id,
+		:source_id, :alert_config_count, :alert_config_threshold,
+		:retry_config_type, :retry_config_duration,
+		:retry_config_retry_count, :filter_config_event_types,
+		:filter_config_filter_headers, :filter_config_filter_body,
+		:rate_limit_config_count, :rate_limit_config_duration,
+		:created_at, :updated_at, :deleted_at
+	);
+    `
+)
+
+func (s *PG) SaveSubscriptions(ctx context.Context, subscriptions []*datastore09.Subscription) error {
+	values := make([]map[string]interface{}, 0, len(subscriptions))
+	for _, subscription := range subscriptions {
+
+		ac := subscription.GetAlertConfig()
+		rc := subscription.GetRetryConfig()
+		fc := subscription.GetFilterConfig()
+		rlc := subscription.GetRateLimitConfig()
+
+		var endpointID, sourceID, deviceID *string
+		if !util.IsStringEmpty(subscription.EndpointID) {
+			endpointID = &subscription.EndpointID
+		}
+
+		if !util.IsStringEmpty(subscription.SourceID) {
+			sourceID = &subscription.SourceID
+		}
+
+		if !util.IsStringEmpty(subscription.DeviceID) {
+			deviceID = &subscription.DeviceID
+		}
+
+		values = append(values, map[string]interface{}{
+			"id":                           subscription.UID,
+			"name":                         subscription.Name,
+			"type":                         subscription.Type,
+			"project_id":                   subscription.ProjectID,
+			"endpoint_id":                  endpointID,
+			"device_id":                    deviceID,
+			"source_id":                    sourceID,
+			"alert_config_count":           ac.Count,
+			"alert_config_threshold":       ac.Threshold,
+			"retry_config_type":            rc.Type,
+			"retry_config_duration":        rc.Duration,
+			"retry_config_retry_count":     rc.RetryCount,
+			"filter_config_event_types":    fc.EventTypes,
+			"filter_config_filter_headers": fc.Filter.Headers,
+			"filter_config_filter_body":    fc.Filter.Body,
+			"rate_limit_config_count":      rlc.Count,
+			"rate_limit_config_duration":   rlc.Duration,
+			"created_at":                   subscription.CreatedAt,
+			"updated_at":                   subscription.UpdatedAt,
+			"deleted_at":                   subscription.DeletedAt,
+		})
+	}
+
+	_, err := s.db.NamedExecContext(ctx, createSubscription, values)
+	return err
 }

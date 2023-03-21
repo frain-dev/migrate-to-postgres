@@ -17,8 +17,6 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 
-	"github.com/frain-dev/convoy/database/postgres"
-
 	"github.com/jmoiron/sqlx"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -34,7 +32,7 @@ func migrateAPIKeysCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.APIKeyCollection)
 
-	pgAPIKeyRepo := postgres.NewAPIKeyRepo(&PG{dbx: dbx})
+	pg := &PG{db: dbx}
 
 	count, err := store.Count(ctx, bson.M{})
 	if err != nil {
@@ -62,6 +60,7 @@ func migrateAPIKeysCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		}
 
 		lastID = apiKeys[len(apiKeys)-1].ID
+		postgresAPIKeys := make([]*datastore09.APIKey, 0, len(apiKeys))
 
 		for i := range apiKeys {
 			ak := &apiKeys[i]
@@ -121,14 +120,77 @@ func migrateAPIKeysCollection(store datastore082.Store, dbx *sqlx.DB) error {
 				DeletedAt: getDeletedAt(ak.DeletedAt),
 			}
 
-			err = pgAPIKeyRepo.CreateAPIKey(ctx, postgresAPIKey)
-			if err != nil {
-				return fmt.Errorf("failed to save postgres api key: %v", err)
-			}
-
 			oldIDToNewID[ak.UID] = postgresAPIKey.UID
+			postgresAPIKeys = append(postgresAPIKeys, postgresAPIKey)
+		}
+
+		if len(postgresAPIKeys) > 0 {
+			err = pg.SaveAPIKeys(ctx, postgresAPIKeys)
+			if err != nil {
+				return fmt.Errorf("failed to save postgres api keys: %v", err)
+			}
 		}
 	}
 
 	return nil
+}
+
+const (
+	saveAPIKeys = `
+    INSERT INTO convoy.api_keys (id,name,key_type,mask_id,role_type,role_project,role_endpoint,hash,salt,user_id,expires_at,created_at,updated_at, deleted_at)
+    VALUES (
+        :id, :name, :key_type, :mask_id, :role_type, :role_project,
+        :role_endpoint, :hash, :salt, :user_id, :expires_at,
+        :created_at, :updated_at, :deleted_at
+    )
+    `
+)
+
+func (a *PG) SaveAPIKeys(ctx context.Context, keys []*datastore09.APIKey) error {
+	values := make([]map[string]interface{}, 0, len(keys))
+
+	for _, key := range keys {
+		var (
+			userID     *string
+			endpointID *string
+			projectID  *string
+			roleType   *auth09.RoleType
+		)
+
+		if !util.IsStringEmpty(key.UserID) {
+			userID = &key.UserID
+		}
+
+		if !util.IsStringEmpty(key.Role.Endpoint) {
+			endpointID = &key.Role.Endpoint
+		}
+
+		if !util.IsStringEmpty(key.Role.Project) {
+			projectID = &key.Role.Project
+		}
+
+		if !util.IsStringEmpty(string(key.Role.Type)) {
+			roleType = &key.Role.Type
+		}
+
+		values = append(values, map[string]interface{}{
+			"id":            key.UID,
+			"name":          key.Name,
+			"key_type":      key.Type,
+			"mask_id":       key.MaskID,
+			"role_type":     roleType,
+			"role_project":  projectID,
+			"role_endpoint": endpointID,
+			"hash":          key.Hash,
+			"salt":          key.Salt,
+			"user_id":       userID,
+			"expires_at":    key.ExpiresAt,
+			"created_at":    key.CreatedAt,
+			"updated_at":    key.UpdatedAt,
+			"deleted_at":    key.DeletedAt,
+		})
+	}
+
+	_, err := a.db.NamedExecContext(ctx, saveAPIKeys, values)
+	return err
 }

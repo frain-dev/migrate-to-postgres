@@ -37,11 +37,11 @@ func addMigrateCommand() *cobra.Command {
 var oldIDToNewID = map[string]string{}
 
 func (p *PG) GetDB() *sqlx.DB {
-	return p.dbx
+	return p.db
 }
 
 type PG struct {
-	dbx *sqlx.DB
+	db *sqlx.DB
 }
 
 const batchSize int64 = 100000

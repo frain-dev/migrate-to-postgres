@@ -31,7 +31,7 @@ func migrateConfigurationsCollection(store datastore082.Store, dbx *sqlx.DB) err
 
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.ConfigCollection)
 
-	pgConfigRepo := postgres.NewConfigRepo(&PG{dbx: dbx})
+	pgConfigRepo := postgres.NewConfigRepo(&PG{db: dbx})
 
 	count, err := store.Count(ctx, bson.M{})
 	if err != nil {

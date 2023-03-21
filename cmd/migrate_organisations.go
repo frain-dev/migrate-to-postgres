@@ -10,8 +10,6 @@ import (
 
 	"github.com/frain-dev/migrate-to-postgres/convoy082/pkg/log"
 
-	"github.com/frain-dev/convoy/database/postgres"
-
 	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/jmoiron/sqlx"
@@ -35,7 +33,7 @@ func migrateOrganisationsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 		return fmt.Errorf("faild to count organisations: %v", err)
 	}
 
-	pgOrgRepo := postgres.NewOrgRepo(&PG{dbx: dbx})
+	pg := &PG{db: dbx}
 
 	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
 	var lastID primitive.ObjectID
@@ -57,6 +55,8 @@ func migrateOrganisationsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 			break
 		}
 		lastID = organisations[len(organisations)-1].ID
+
+		postgresOrgs := make([]*datastore09.Organisation, 0, len(organisations))
 
 		for i := range organisations {
 			org := &organisations[i]
@@ -85,14 +85,46 @@ func migrateOrganisationsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 				DeletedAt:      getDeletedAt(org.DeletedAt),
 			}
 
-			err = pgOrgRepo.CreateOrganisation(ctx, postgresOrg)
-			if err != nil {
-				return fmt.Errorf("failed to save postgres org: %v", err)
-			}
-
 			oldIDToNewID[org.UID] = postgresOrg.UID
+			postgresOrgs = append(postgresOrgs, postgresOrg)
+		}
+
+		if len(postgresOrgs) > 0 {
+			err = pg.SaveOrganisations(ctx, postgresOrgs)
+			if err != nil {
+				return fmt.Errorf("failed to save postgres orgs: %v", err)
+			}
 		}
 	}
 
 	return nil
+}
+
+const (
+	saveOrganizations = `
+	INSERT INTO convoy.organisations (id, name, owner_id, custom_domain, assigned_domain, created_at, updated_at, deleted_at)
+	VALUES (
+	    :id, :name, :owner_id, :custom_domain, :assigned_domain, :created_at, :updated_at, :deleted_at
+	)
+	`
+)
+
+func (o *PG) SaveOrganisations(ctx context.Context, orgs []*datastore09.Organisation) error {
+	values := make([]map[string]interface{}, 0, len(orgs))
+
+	for _, org := range orgs {
+		values = append(values, map[string]interface{}{
+			"id":              org.UID,
+			"name":            org.Name,
+			"owner_id":        org.OwnerID,
+			"custom_domain":   org.CustomDomain,
+			"assigned_domain": org.AssignedDomain,
+			"created_at":      org.CreatedAt,
+			"updated_at":      org.UpdatedAt,
+			"deleted_at":      org.DeletedAt,
+		})
+	}
+
+	_, err := o.db.NamedExecContext(ctx, saveOrganizations, values)
+	return err
 }

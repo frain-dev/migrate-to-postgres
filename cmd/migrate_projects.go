@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"math"
@@ -14,8 +15,6 @@ import (
 	"github.com/oklog/ulid/v2"
 
 	"go.mongodb.org/mongo-driver/bson"
-
-	"github.com/frain-dev/convoy/database/postgres"
 
 	"github.com/jmoiron/sqlx"
 
@@ -30,7 +29,7 @@ func migrateProjectsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.ProjectsCollection)
 
-	pgProjectRepo := postgres.NewProjectRepo(&PG{dbx: dbx})
+	pg := (&PG{db: dbx})
 
 	totalProjects, err := store.Count(ctx, bson.M{})
 	if err != nil {
@@ -57,6 +56,8 @@ func migrateProjectsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 			break
 		}
 		lastID = projects[len(projects)-1].ID
+
+		postgresProjects := make([]*datastore09.Project, 0, len(projects))
 
 		for i := range projects {
 			project := &projects[i]
@@ -147,14 +148,103 @@ func migrateProjectsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 				postgresProject.RetainedEvents = project.Metadata.RetainedEvents
 			}
 
-			err = pgProjectRepo.CreateProject(ctx, postgresProject)
-			if err != nil {
-				return fmt.Errorf("failed to save postgres project: %v", err)
-			}
-
 			oldIDToNewID[project.UID] = postgresProject.UID
+			postgresProjects = append(postgresProjects, postgresProject)
+		}
+
+		if len(postgresProjects) > 0 {
+			err = pg.SaveProjects(ctx, postgresProjects)
+			if err != nil {
+				return fmt.Errorf("failed to save postgres projects: %v", err)
+			}
 		}
 	}
 
 	return nil
+}
+
+const (
+	saveProjects = `
+	INSERT INTO convoy.projects (id, name, type, logo_url, organisation_id, project_configuration_id, created_at, updated_at, deleted_at)
+	VALUES (:id, :name, :type, :logo_url, :organisation_id, :project_configuration_id, :created_at, :updated_at, :deleted_at)
+	`
+
+	saveProjectConfigurations = `
+	INSERT INTO convoy.project_configurations (
+		id, retention_policy_policy, max_payload_read_size,
+		replay_attacks_prevention_enabled,
+		retention_policy_enabled, ratelimit_count,
+		ratelimit_duration, strategy_type,
+		strategy_duration, strategy_retry_count,
+		signature_header, signature_versions
+	  )
+	  VALUES
+		(
+		:id, :retention_policy_policy, :max_payload_read_size,
+		:replay_attacks_prevention_enabled,
+		:retention_policy_enabled, :ratelimit_count,
+		:ratelimit_duration, :strategy_type,
+		:strategy_duration, :strategy_retry_count,
+		:signature_header, :signature_versions
+		)
+	`
+)
+
+func (p *PG) SaveProjects(ctx context.Context, projects []*datastore09.Project) error {
+	prValues := make([]map[string]interface{}, 0, len(projects))
+	cfgs := make([]map[string]interface{}, 0, len(projects))
+
+	for _, project := range projects {
+		project.ProjectConfigID = ulid.Make().String()
+
+		prValues = append(prValues, map[string]interface{}{
+			"id":                       project.UID,
+			"name":                     project.Name,
+			"type":                     project.Type,
+			"logo_url":                 project.LogoURL,
+			"organisation_id":          project.OrganisationID,
+			"project_configuration_id": project.ProjectConfigID,
+			"created_at":               project.CreatedAt,
+			"updated_at":               project.UpdatedAt,
+			"deleted_at":               project.DeletedAt,
+		})
+
+		rc := project.Config.GetRetentionPolicyConfig()
+		rlc := project.Config.GetRateLimitConfig()
+		sc := project.Config.GetStrategyConfig()
+		sgc := project.Config.GetSignatureConfig()
+
+		cfgs = append(cfgs, map[string]interface{}{
+			"id":                                project.ProjectConfigID,
+			"retention_policy_policy":           rc.Policy,
+			"max_payload_read_size":             project.Config.MaxIngestSize,
+			"replay_attacks_prevention_enabled": project.Config.ReplayAttacks,
+			"retention_policy_enabled":          project.Config.IsRetentionPolicyEnabled,
+			"ratelimit_count":                   rlc.Count,
+			"ratelimit_duration":                rlc.Duration,
+			"strategy_type":                     sc.Type,
+			"strategy_duration":                 sc.Duration,
+			"strategy_retry_count":              sc.RetryCount,
+			"signature_header":                  sgc.Header,
+			"signature_versions":                sgc.Versions,
+		})
+	}
+
+	tx, err := p.db.BeginTxx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer rollbackTx(tx)
+
+	_, err = tx.NamedExecContext(ctx, saveProjectConfigurations, cfgs)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.NamedExecContext(ctx, saveProjects, prValues)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"math"
@@ -31,7 +32,7 @@ func migratePortalLinksCollection(store datastore082.Store, dbx *sqlx.DB) error 
 
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.PortalLinkCollection)
 
-	pgPortalLinkRepo := postgres.NewPortalLinkRepo(&PG{dbx: dbx})
+	pg := &PG{db: dbx}
 
 	count, err := store.Count(ctx, bson.M{})
 	if err != nil {
@@ -58,6 +59,7 @@ func migratePortalLinksCollection(store datastore082.Store, dbx *sqlx.DB) error 
 			break
 		}
 		lastID = portalLinks[len(portalLinks)-1].ID
+		postgresPortalLinks := make([]*datastore09.PortalLink, 0, len(portalLinks))
 
 		for i := range portalLinks {
 			portalLink := &portalLinks[i]
@@ -100,14 +102,70 @@ func migratePortalLinksCollection(store datastore082.Store, dbx *sqlx.DB) error 
 				DeletedAt: getDeletedAt(portalLink.DeletedAt),
 			}
 
-			err = pgPortalLinkRepo.CreatePortalLink(ctx, postgresPortalLink)
-			if err != nil {
-				return fmt.Errorf("failed to save postgres portalLink: %v", err)
-			}
-
 			oldIDToNewID[portalLink.UID] = postgresPortalLink.UID
+			postgresPortalLinks = append(postgresPortalLinks, postgresPortalLink)
+		}
+
+		if len(postgresPortalLinks) > 0 {
+			err = pg.SavePortalLinks(ctx, postgresPortalLinks)
+			if err != nil {
+				return fmt.Errorf("failed to save postgres portalLinks: %v", err)
+			}
 		}
 	}
 
 	return nil
+}
+
+const (
+	savePortalLinks = `
+	INSERT INTO convoy.portal_links (id, project_id, name, token, endpoints, created_at, updated_at, deleted_at)
+	VALUES (:id, :project_id, :name, :token, :endpoints, :created_at, :updated_at, :deleted_at)
+	`
+
+	savePortalLinkEndpoints = `
+	INSERT INTO convoy.portal_links_endpoints (portal_link_id, endpoint_id) VALUES (:portal_link_id, :endpoint_id)
+	`
+)
+
+func (p *PG) SavePortalLinks(ctx context.Context, portals []*datastore09.PortalLink) error {
+	pl := make([]map[string]interface{}, 0, len(portals))
+	plEndpoints := make([]postgres.PortalLinkEndpoint, 0, len(portals)*2)
+
+	for _, portal := range portals {
+		pl = append(pl, map[string]interface{}{
+			"id":         portal.UID,
+			"project_id": portal.ProjectID,
+			"name":       portal.Name,
+			"token":      portal.Token,
+			"endpoints":  portal.Endpoints,
+			"created_at": portal.CreatedAt,
+			"updated_at": portal.CreatedAt,
+			"deleted_at": portal.DeletedAt,
+		})
+
+		if len(portal.Endpoints) > 0 {
+			for _, endpointID := range portal.Endpoints {
+				plEndpoints = append(plEndpoints, postgres.PortalLinkEndpoint{PortalLinkID: portal.UID, EndpointID: endpointID})
+			}
+		}
+	}
+
+	tx, err := p.db.BeginTxx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer rollbackTx(tx)
+
+	_, err = tx.NamedExecContext(ctx, savePortalLinks, pl)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.NamedExecContext(ctx, savePortalLinkEndpoints, plEndpoints)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }

@@ -16,8 +16,6 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 
-	"github.com/frain-dev/convoy/database/postgres"
-
 	"github.com/jmoiron/sqlx"
 
 	auth09 "github.com/frain-dev/convoy/auth"
@@ -32,7 +30,7 @@ func migrateOrgInvitesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.OrganisationInvitesCollection)
 
-	pgOrgMemberRepo := postgres.NewOrgInviteRepo(&PG{dbx: dbx})
+	pg := &PG{db: dbx}
 
 	count, err := store.Count(ctx, bson.M{})
 	if err != nil {
@@ -59,6 +57,7 @@ func migrateOrgInvitesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 			break
 		}
 		lastID = organisationInvites[len(organisationInvites)-1].ID
+		postgresOrgInvites := make([]*datastore09.OrganisationInvite, 0, len(organisationInvites))
 
 		for i := range organisationInvites {
 			orgInvite := &organisationInvites[i]
@@ -113,14 +112,61 @@ func migrateOrgInvitesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 				DeletedAt: getDeletedAt(orgInvite.DeletedAt),
 			}
 
-			err = pgOrgMemberRepo.CreateOrganisationInvite(ctx, postgresOrgInvite)
-			if err != nil {
-				return fmt.Errorf("failed to save postgres orgInvite: %v", err)
-			}
-
 			oldIDToNewID[orgInvite.UID] = postgresOrgInvite.UID
+			postgresOrgInvites = append(postgresOrgInvites, postgresOrgInvite)
+		}
+
+		if len(postgresOrgInvites) > 0 {
+			err = pg.SaveOrganisationInvites(ctx, postgresOrgInvites)
+			if err != nil {
+				return fmt.Errorf("failed to save postgres orgInvites: %v", err)
+			}
 		}
 	}
 
 	return nil
+}
+
+const (
+	createOrganisationInvite = `
+	INSERT INTO convoy.organisation_invites (id, organisation_id, invitee_email, token, role_type, role_project, role_endpoint, status, expires_at, created_at, updated_at, deleted_at)
+	VALUES (
+	    ;id, :organisation_id, :invitee_email, :token, :role_type,
+	    :role_project, :role_endpoint, :status, :expires_at, :created_at, :updated_at, :deleted_at
+	)
+	`
+)
+
+func (i *PG) SaveOrganisationInvites(ctx context.Context, ivs []*datastore09.OrganisationInvite) error {
+	values := make([]map[string]interface{}, 0, len(ivs))
+
+	for _, iv := range ivs {
+		var endpointID *string
+		var projectID *string
+		if !util.IsStringEmpty(iv.Role.Endpoint) {
+			endpointID = &iv.Role.Endpoint
+		}
+
+		if !util.IsStringEmpty(iv.Role.Project) {
+			projectID = &iv.Role.Project
+		}
+
+		values = append(values, map[string]interface{}{
+			"id":              iv.UID,
+			"organisation_id": iv.OrganisationID,
+			"invitee_email":   iv.InviteeEmail,
+			"token":           iv.Token,
+			"role_type":       iv.Role.Type,
+			"role_project":    projectID,
+			"role_endpoint":   endpointID,
+			"status":          iv.Status,
+			"expires_at":      iv.ExpiresAt,
+			"created_at":      iv.CreatedAt,
+			"updated_at":      iv.UpdatedAt,
+			"deleted_at":      iv.DeletedAt,
+		})
+	}
+
+	_, err := i.db.NamedExecContext(ctx, createOrganisationInvite, values)
+	return err
 }

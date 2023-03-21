@@ -18,8 +18,6 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 
-	"github.com/frain-dev/convoy/database/postgres"
-
 	"github.com/jmoiron/sqlx"
 
 	datastore09 "github.com/frain-dev/convoy/datastore"
@@ -33,7 +31,7 @@ func migrateEventDeliveriesCollection(store datastore082.Store, dbx *sqlx.DB) er
 
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.EventDeliveryCollection)
 
-	pgEventDeliveryRepo := postgres.NewEventDeliveryRepo(&PG{dbx: dbx})
+	pg := (&PG{db: dbx})
 
 	count, err := store.Count(ctx, bson.M{})
 	if err != nil {
@@ -63,6 +61,7 @@ func migrateEventDeliveriesCollection(store datastore082.Store, dbx *sqlx.DB) er
 		}
 
 		lastID = eventDeliveries[len(eventDeliveries)-1].ID
+		postgresEventDeliveries := make([]*datastore09.EventDelivery, 0, len(eventDeliveries))
 
 		for i := range eventDeliveries {
 			ed := &eventDeliveries[i]
@@ -170,16 +169,68 @@ func migrateEventDeliveriesCollection(store datastore082.Store, dbx *sqlx.DB) er
 				})
 			}
 
-			err = pgEventDeliveryRepo.CreateEventDelivery(ctx, postgresEventDelivery)
-			if err != nil {
-				return fmt.Errorf("failed to save postgres event delivery: %v", err)
-			}
-
 			oldIDToNewID[ed.UID] = postgresEventDelivery.UID
+			postgresEventDeliveries = append(postgresEventDeliveries, postgresEventDelivery)
+		}
+
+		if len(postgresEventDeliveries) > 0 {
+			err = pg.SaveEventDeliveries(ctx, postgresEventDeliveries)
+			if err != nil {
+				return fmt.Errorf("failed to save postgres event deliveries: %v", err)
+			}
 		}
 
 		fmt.Printf("Finished %d eventDeliveries batch\n", i)
 	}
 
 	return nil
+}
+
+const (
+	saveEventDeliveries = `
+    INSERT INTO convoy.event_deliveries (id,project_id,event_id,endpoint_id,device_id,subscription_id,headers,attempts,status,metadata,cli_metadata,description,created_at,updated_at,deleted_at)
+    VALUES (
+        :id, :project_id, :event_id, :endpoint_id, :device_id,
+        :subscription_id, :headers, :attempts, :status, :metadata,
+        :cli_metadata, :description, :created_at, :updated_at, :deleted_at
+    )
+    `
+)
+
+func (e *PG) SaveEventDeliveries(ctx context.Context, deliveries []*datastore09.EventDelivery) error {
+	values := make([]map[string]interface{}, 0, len(deliveries))
+
+	for _, delivery := range deliveries {
+		var endpointID *string
+		var deviceID *string
+
+		if !util.IsStringEmpty(delivery.EndpointID) {
+			endpointID = &delivery.EndpointID
+		}
+
+		if !util.IsStringEmpty(delivery.DeviceID) {
+			deviceID = &delivery.DeviceID
+		}
+
+		values = append(values, map[string]interface{}{
+			"id":              delivery.UID,
+			"project_id":      delivery.ProjectID,
+			"event_id":        delivery.EventID,
+			"endpoint_id":     endpointID,
+			"device_id":       deviceID,
+			"subscription_id": delivery.SubscriptionID,
+			"headers":         delivery.Headers,
+			"attempts":        delivery.DeliveryAttempts,
+			"status":          delivery.Status,
+			"metadata":        delivery.Metadata,
+			"cli_metadata":    delivery.CLIMetadata,
+			"description":     delivery.Description,
+			"created_at":      delivery.CreatedAt,
+			"updated_at":      delivery.UpdatedAt,
+			"deleted_at":      delivery.DeletedAt,
+		})
+	}
+
+	_, err := e.db.NamedExecContext(ctx, saveEventDeliveries, values)
+	return err
 }

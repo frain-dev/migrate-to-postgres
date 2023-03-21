@@ -16,8 +16,6 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 
-	"github.com/frain-dev/convoy/database/postgres"
-
 	"github.com/jmoiron/sqlx"
 
 	auth09 "github.com/frain-dev/convoy/auth"
@@ -32,7 +30,7 @@ func migrateOrgMemberCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.OrganisationMembersCollection)
 
-	pgOrgMemberRepo := postgres.NewOrgMemberRepo(&PG{dbx: dbx})
+	pg := &PG{db: dbx}
 
 	totalEndpoints, err := store.Count(ctx, bson.M{})
 	if err != nil {
@@ -59,6 +57,7 @@ func migrateOrgMemberCollection(store datastore082.Store, dbx *sqlx.DB) error {
 			break
 		}
 		lastID = organisationMembers[len(organisationMembers)-1].ID
+		postgresOrgMembers := make([]*datastore09.OrganisationMember, 0, len(organisationMembers))
 
 		for i := range organisationMembers {
 			orgMember := &organisationMembers[i]
@@ -116,14 +115,58 @@ func migrateOrgMemberCollection(store datastore082.Store, dbx *sqlx.DB) error {
 				DeletedAt: getDeletedAt(orgMember.DeletedAt),
 			}
 
-			err = pgOrgMemberRepo.CreateOrganisationMember(ctx, postgresOrgMember)
-			if err != nil {
-				return fmt.Errorf("failed to save postgres orgMember: %v", err)
-			}
-
 			oldIDToNewID[orgMember.UID] = postgresOrgMember.UID
+			postgresOrgMembers = append(postgresOrgMembers, postgresOrgMember)
+		}
+
+		if len(postgresOrgMembers) > 0 {
+			err = pg.SaveOrganisationMembers(ctx, postgresOrgMembers)
+			if err != nil {
+				return fmt.Errorf("failed to save postgres orgMembers: %v", err)
+			}
 		}
 	}
 
 	return nil
+}
+
+const (
+	saveOrgMembers = `
+	INSERT INTO convoy.organisation_members (id, organisation_id, user_id, role_type, role_project, role_endpoint, created_at, updated_at, deleted_at)
+	VALUES (
+	    :id, :organisation_id, :user_id, :role_type, :role_project,
+	    :role_endpoint, :created_at, :updated_at, :deleted_at
+	)
+	`
+)
+
+func (o *PG) SaveOrganisationMembers(ctx context.Context, members []*datastore09.OrganisationMember) error {
+	values := make([]map[string]interface{}, 0, len(members))
+
+	for _, member := range members {
+		var endpointID *string
+		var projectID *string
+		if !util.IsStringEmpty(member.Role.Endpoint) {
+			endpointID = &member.Role.Endpoint
+		}
+
+		if !util.IsStringEmpty(member.Role.Project) {
+			projectID = &member.Role.Project
+		}
+
+		values = append(values, map[string]interface{}{
+			"id":              member.UID,
+			"organisation_id": member.OrganisationID,
+			"user_id":         member.UserID,
+			"role_type":       member.Role.Type,
+			"role_project":    projectID,
+			"role_endpoint":   endpointID,
+			"created_at":      member.CreatedAt,
+			"updated_at":      member.UpdatedAt,
+			"deleted_at":      member.DeletedAt,
+		})
+	}
+
+	_, err := o.db.NamedExecContext(ctx, saveOrgMembers, values)
+	return err
 }

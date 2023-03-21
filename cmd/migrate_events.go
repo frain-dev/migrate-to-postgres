@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"math"
@@ -33,7 +34,7 @@ func migrateEventsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.EventCollection)
 
-	pgEventRepo := postgres.NewEventRepo(&PG{dbx: dbx})
+	pg := &PG{db: dbx}
 
 	count, err := store.Count(ctx, bson.M{})
 	if err != nil {
@@ -61,6 +62,7 @@ func migrateEventsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		}
 
 		lastID = events[len(events)-1].ID
+		postgresEvents := make([]*datastore09.Event, 0, len(events))
 
 		for i := range events {
 			event := &events[i]
@@ -117,16 +119,84 @@ func migrateEventsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 				DeletedAt:        getDeletedAt(event.DeletedAt),
 			}
 
-			err = pgEventRepo.CreateEvent(ctx, postgresEvent)
-			if err != nil {
-				return fmt.Errorf("failed to save postgres event: %v", err)
-			}
-
 			oldIDToNewID[event.UID] = postgresEvent.UID
+			postgresEvents = append(postgresEvents, postgresEvent)
 		}
 
+		if len(postgresEvents) > 0 {
+			err = pg.SaveEvents(ctx, postgresEvents)
+			if err != nil {
+				return fmt.Errorf("failed to save postgres events: %v", err)
+			}
+		}
 		fmt.Printf("Finished %d events batch\n", i)
 	}
 
 	return nil
+}
+
+const (
+	saveEvents = `
+	INSERT INTO convoy.events (id, event_type, endpoints, project_id, source_id, headers, raw, data,created_at,updated_at, deleted_at)
+	VALUES (
+	    :id, :event_type, :endpoints, :project_id, :source_id,
+	    :headers, :raw, :data, :created_at, :updated_at, :deleted_at
+	)
+	`
+
+	createEventEndpoints = `
+	INSERT INTO convoy.events_endpoints (endpoint_id, event_id) VALUES (:endpoint_id, :event_id)
+	`
+)
+
+func (e *PG) SaveEvents(ctx context.Context, events []*datastore09.Event) error {
+	ev := make([]map[string]interface{}, 0, len(events))
+	evEndpoints := make([]postgres.EventEndpoint, 0, len(events)*2)
+
+	for _, event := range events {
+		var sourceID *string
+
+		if !util.IsStringEmpty(event.SourceID) {
+			sourceID = &event.SourceID
+		}
+
+		ev = append(ev, map[string]interface{}{
+			"id":         event.UID,
+			"event_type": event.EventType,
+			"endpoints":  event.Endpoints,
+			"project_id": event.ProjectID,
+			"source_id":  sourceID,
+			"headers":    event.Headers,
+			"raw":        event.Raw,
+			"data":       event.Data,
+			"created_at": event.CreatedAt,
+			"updated_at": event.UpdatedAt,
+			"deleted_at": event.DeletedAt,
+		})
+
+		if len(event.Endpoints) > 0 {
+			for _, endpointID := range event.Endpoints {
+				evEndpoints = append(evEndpoints, postgres.EventEndpoint{EventID: event.UID, EndpointID: endpointID})
+			}
+		}
+	}
+
+	tx, err := e.db.BeginTxx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return err
+	}
+
+	defer rollbackTx(tx)
+
+	_, err = tx.NamedExecContext(ctx, saveEvents, ev)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.NamedExecContext(ctx, createEventEndpoints, evEndpoints)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
