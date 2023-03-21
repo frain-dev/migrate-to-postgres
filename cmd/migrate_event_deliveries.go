@@ -214,6 +214,9 @@ func (e *PG) SaveEventDeliveries(ctx context.Context, deliveries []*datastore09.
 			deviceID = &delivery.DeviceID
 		}
 
+		fmt.Println("raw", delivery.Metadata.Raw)
+		fmt.Println("data", delivery.Metadata.Data)
+
 		values = append(values, map[string]interface{}{
 			"id":              delivery.UID,
 			"project_id":      delivery.ProjectID,
