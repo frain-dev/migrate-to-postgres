@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/kr/pretty"
+
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"github.com/frain-dev/migrate-to-postgres/convoy082/pkg/log"
@@ -215,7 +217,8 @@ func (e *PG) SaveEventDeliveries(ctx context.Context, deliveries []*datastore09.
 		}
 
 		fmt.Println("raw", delivery.Metadata.Raw)
-		fmt.Println("data", delivery.Metadata.Data)
+		fmt.Println("data", string(delivery.Metadata.Data))
+		pretty.Println("delivery", (delivery))
 
 		values = append(values, map[string]interface{}{
 			"id":              delivery.UID,
