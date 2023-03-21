@@ -33,7 +33,7 @@ func migrateEventDeliveriesCollection(store datastore082.Store, dbx *sqlx.DB) er
 
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.EventDeliveryCollection)
 
-	const batchSize int64 = 3854 // very precise, see https://github.com/jmoiron/sqlx/issues/552#issuecomment-665630408
+	const batchSize int64 = 3 // very precise, see https://github.com/jmoiron/sqlx/issues/552#issuecomment-665630408
 
 	pg := (&PG{db: dbx})
 
@@ -220,10 +220,6 @@ func (e *PG) SaveEventDeliveries(ctx context.Context, deliveries []*datastore09.
 			deviceID = &delivery.DeviceID
 		}
 
-		fmt.Println("raw", delivery.Metadata.Raw)
-		fmt.Println("data", string(delivery.Metadata.Data))
-		pretty.Println("delivery", (delivery))
-
 		values = append(values, map[string]interface{}{
 			"id":              delivery.UID,
 			"project_id":      delivery.ProjectID,
@@ -244,5 +240,12 @@ func (e *PG) SaveEventDeliveries(ctx context.Context, deliveries []*datastore09.
 	}
 
 	_, err := e.db.NamedExecContext(ctx, saveEventDeliveries, values)
+	if err != nil {
+		for _, delivery := range deliveries {
+			fmt.Println("raw", delivery.Metadata.Raw)
+			fmt.Println("data", string(delivery.Metadata.Data))
+			pretty.Println("delivery", (delivery))
+		}
+	}
 	return err
 }
