@@ -131,7 +131,7 @@ const (
 	createOrganisationInvite = `
 	INSERT INTO convoy.organisation_invites (id, organisation_id, invitee_email, token, role_type, role_project, role_endpoint, status, expires_at, created_at, updated_at, deleted_at)
 	VALUES (
-	    ;id, :organisation_id, :invitee_email, :token, :role_type,
+	    :id, :organisation_id, :invitee_email, :token, :role_type,
 	    :role_project, :role_endpoint, :status, :expires_at, :created_at, :updated_at, :deleted_at
 	)
 	`
