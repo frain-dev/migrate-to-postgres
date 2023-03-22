@@ -33,7 +33,7 @@ func migrateEventDeliveriesCollection(store datastore082.Store, dbx *sqlx.DB) er
 
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.EventDeliveryCollection)
 
-	const batchSize int64 = 10 // very precise, see https://github.com/jmoiron/sqlx/issues/552#issuecomment-665630408
+	const batchSize int64 = 1 // very precise, see https://github.com/jmoiron/sqlx/issues/552#issuecomment-665630408
 
 	pg := &PG{db: dbx}
 
@@ -44,7 +44,11 @@ func migrateEventDeliveriesCollection(store datastore082.Store, dbx *sqlx.DB) er
 
 	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
 
-	var lastID primitive.ObjectID
+	lastID, err := primitive.ObjectIDFromHex("63469e9485dcf341b97405b5")
+	if err != nil {
+		return fmt.Errorf("failed to parse obj id: %v", err)
+	}
+
 	seen := map[string]bool{}
 
 	for i := 1; i <= numBatches; i++ {
