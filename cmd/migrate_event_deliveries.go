@@ -44,7 +44,7 @@ func migrateEventDeliveriesCollection(store datastore082.Store, dbx *sqlx.DB) er
 
 	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
 
-	lastID, err := primitive.ObjectIDFromHex("63469e9485dcf341b97405b5")
+	lastID, err := primitive.ObjectIDFromHex("63469eb385dcf341b97405cf")
 	if err != nil {
 		return fmt.Errorf("failed to parse obj id: %v", err)
 	}
