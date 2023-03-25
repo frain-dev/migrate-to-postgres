@@ -39,10 +39,23 @@ func migrateOrganisationsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 	var lastID primitive.ObjectID
 	seen := map[string]bool{}
 
+	// ignore piggyvest data
+	filter := bson.M{
+		"uid": bson.M{
+			"$not": bson.M{
+				"$in": []string{
+					"f76b9e93-ea59-40a6-96bf-591ed1a839ca",
+					"64391e49-6057-4e9e-a10b-cf0858cc3de7",
+					"92d748ec-3f4a-453a-ab54-7f54fc5c966b",
+				},
+			},
+		},
+	}
+
 	for i := 1; i <= numBatches; i++ {
 		var organisations []datastore082.Organisation
 
-		err = store.FindMany(ctx, bson.M{}, nil, nil, lastID, batchSize, &organisations)
+		err = store.FindMany(ctx, filter, nil, nil, lastID, batchSize, &organisations)
 		if err != nil {
 			if errors.Is(err, mongo.ErrNoDocuments) {
 				break
