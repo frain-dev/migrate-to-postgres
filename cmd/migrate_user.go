@@ -39,10 +39,21 @@ func migrateUserCollection(store datastore082.Store, dbx *sqlx.DB) error {
 	var lastID primitive.ObjectID
 	seen := map[string]bool{}
 
+	// only migrate dojah users
+	filter := bson.M{
+		"uid": bson.M{
+			"$in": []string{
+				"43e2a10d-d3f4-4aeb-90a6-b696cace20c8",
+				"c6c0b7e6-0aea-477b-864d-a57e3757d77a",
+				"dbba1622-1ea9-486e-8a43-47e2d4443951",
+			},
+		},
+	}
+
 	for i := 1; i <= numBatches; i++ {
 		var users []datastore082.User
 
-		err = store.FindMany(ctx, bson.M{}, nil, nil, lastID, batchSize, &users)
+		err = store.FindMany(ctx, filter, nil, nil, lastID, batchSize, &users)
 		if err != nil {
 			if errors.Is(err, mongo.ErrNoDocuments) {
 				break

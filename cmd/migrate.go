@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/frain-dev/migrate-to-postgres/convoy082/pkg/log"
 
@@ -128,17 +127,17 @@ func migrate(mongoDsn, postgresDsn string) error {
 		return fmt.Errorf("failed to migrate api keys collection: %v", err)
 	}
 
-	err = migrateEventsCollection(store, db)
-	if err != nil {
-		return fmt.Errorf("failed to migrate events collection: %v", err)
-	}
-
-	time.Sleep(time.Second * 10)
-
-	err = migrateEventDeliveriesCollection(store, db)
-	if err != nil {
-		return fmt.Errorf("failed to migrate event deliveries collection: %v", err)
-	}
+	//err = migrateEventsCollection(store, db)
+	//if err != nil {
+	//	return fmt.Errorf("failed to migrate events collection: %v", err)
+	//}
+	//
+	//time.Sleep(time.Second * 10)
+	//
+	//err = migrateEventDeliveriesCollection(store, db)
+	//if err != nil {
+	//	return fmt.Errorf("failed to migrate event deliveries collection: %v", err)
+	//}
 
 	return nil
 }
