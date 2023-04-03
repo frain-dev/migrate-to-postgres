@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/frain-dev/migrate-to-postgres/convoy082/pkg/log"
@@ -58,7 +59,10 @@ func migrate(mongoDsn, postgresDsn string) error {
 
 	store := datastore082.New(mc.Database())
 
-	db, err := sqlx.Connect("postgres", postgresDsn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	db, err := sqlx.ConnectContext(ctx, "postgres", postgresDsn)
 	if err != nil {
 		return fmt.Errorf("failed to open database: %v", err)
 	}
