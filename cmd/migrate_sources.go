@@ -95,6 +95,7 @@ func migrateSourcesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 			if source.ProviderConfig != nil {
 				postgresSource.ProviderConfig = &datastore09.ProviderConfig{}
 				if source.ProviderConfig.Twitter != nil {
+					postgresSource.ProviderConfig = &datastore09.ProviderConfig{Twitter: &datastore09.TwitterProviderConfig{}}
 					postgresSource.ProviderConfig.Twitter.CrcVerifiedAt = null.TimeFrom(source.ProviderConfig.Twitter.CrcVerifiedAt.Time())
 				}
 			}

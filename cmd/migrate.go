@@ -3,7 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
+
+	"gopkg.in/guregu/null.v4"
 
 	"github.com/frain-dev/migrate-to-postgres/convoy082/pkg/log"
 
@@ -146,3 +149,9 @@ func migrate(mongoDsn, postgresDsn string) error {
 
 	return nil
 }
+
+func nullString(s string) null.String {
+	return null.NewString(s, !IsStringEmpty(s))
+}
+
+func IsStringEmpty(s string) bool { return len(strings.TrimSpace(s)) == 0 }

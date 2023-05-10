@@ -14,11 +14,9 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"go.mongodb.org/mongo-driver/mongo"
-	"gopkg.in/guregu/null.v4"
-
 	datastore09 "github.com/frain-dev/convoy/datastore"
 	datastore082 "github.com/frain-dev/migrate-to-postgres/convoy082/datastore"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func migrateOrganisationsCollection(store datastore082.Store, dbx *sqlx.DB) error {
@@ -90,8 +88,8 @@ func migrateOrganisationsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 				UID:            org.UID,
 				OwnerID:        ownerID,
 				Name:           org.Name,
-				CustomDomain:   null.NewString(org.CustomDomain, true),
-				AssignedDomain: null.NewString(org.AssignedDomain, true),
+				CustomDomain:   nullString(org.CustomDomain),
+				AssignedDomain: nullString(org.AssignedDomain),
 				CreatedAt:      org.CreatedAt.Time(),
 				UpdatedAt:      org.UpdatedAt.Time(),
 				DeletedAt:      getDeletedAt(org.DeletedAt),

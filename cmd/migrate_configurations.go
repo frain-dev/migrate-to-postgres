@@ -16,11 +16,9 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"go.mongodb.org/mongo-driver/mongo"
-	"gopkg.in/guregu/null.v4"
-
 	datastore09 "github.com/frain-dev/convoy/datastore"
 	datastore082 "github.com/frain-dev/migrate-to-postgres/convoy082/datastore"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func migrateConfigurationsCollection(store datastore082.Store, dbx *sqlx.DB) error {
@@ -84,18 +82,18 @@ func migrateConfigurationsCollection(store datastore082.Store, dbx *sqlx.DB) err
 
 				if cfg.StoragePolicy.S3 != nil {
 					postgresCfg.StoragePolicy.S3 = &datastore09.S3Storage{
-						Bucket:       null.StringFrom(cfg.StoragePolicy.S3.Bucket),
-						AccessKey:    null.StringFrom(cfg.StoragePolicy.S3.AccessKey),
-						SecretKey:    null.StringFrom(cfg.StoragePolicy.S3.SecretKey),
-						Region:       null.StringFrom(cfg.StoragePolicy.S3.Region),
-						SessionToken: null.StringFrom(cfg.StoragePolicy.S3.SessionToken),
-						Endpoint:     null.StringFrom(cfg.StoragePolicy.S3.Endpoint),
+						Bucket:       nullString(cfg.StoragePolicy.S3.Bucket),
+						AccessKey:    nullString(cfg.StoragePolicy.S3.AccessKey),
+						SecretKey:    nullString(cfg.StoragePolicy.S3.SecretKey),
+						Region:       nullString(cfg.StoragePolicy.S3.Region),
+						SessionToken: nullString(cfg.StoragePolicy.S3.SessionToken),
+						Endpoint:     nullString(cfg.StoragePolicy.S3.Endpoint),
 					}
 				}
 
 				if cfg.StoragePolicy.OnPrem != nil {
 					postgresCfg.StoragePolicy.OnPrem = &datastore09.OnPremStorage{
-						Path: null.StringFrom(cfg.StoragePolicy.OnPrem.Path),
+						Path: nullString(cfg.StoragePolicy.OnPrem.Path),
 					}
 				}
 			}
