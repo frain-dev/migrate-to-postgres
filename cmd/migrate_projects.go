@@ -76,7 +76,7 @@ func migrateProjectsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 			}
 
 			postgresProject := &datastore09.Project{
-				UID:             ulid.Make().String(),
+				UID:             project.UID,
 				Name:            project.Name,
 				LogoURL:         project.LogoURL,
 				OrganisationID:  orgID,
@@ -130,7 +130,7 @@ func migrateProjectsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 					for _, version := range project.Config.Signature.Versions {
 						postgresProject.Config.Signature.Versions = append(postgresProject.Config.Signature.Versions, datastore09.SignatureVersion{
-							UID: ulid.Make().String(),
+							UID: version.UID,
 							// UID: version.UID,
 							Hash:      version.Hash,
 							Encoding:  datastore09.EncodingType(version.Encoding),

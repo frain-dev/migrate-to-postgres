@@ -10,8 +10,6 @@ import (
 
 	"github.com/frain-dev/migrate-to-postgres/convoy082/pkg/log"
 
-	"github.com/oklog/ulid/v2"
-
 	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/jmoiron/sqlx"
@@ -80,7 +78,7 @@ func migrateDevicesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 			}
 
 			postgresDevice := datastore09.Device{
-				UID:        ulid.Make().String(),
+				UID:        device.UID,
 				ProjectID:  projectID,
 				EndpointID: endpointID,
 				HostName:   device.HostName,

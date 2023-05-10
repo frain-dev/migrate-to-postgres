@@ -13,8 +13,6 @@ import (
 
 	"github.com/frain-dev/migrate-to-postgres/convoy082/util"
 
-	"github.com/oklog/ulid/v2"
-
 	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/frain-dev/convoy/database/postgres"
@@ -92,7 +90,7 @@ func migratePortalLinksCollection(store datastore082.Store, dbx *sqlx.DB) error 
 			}
 
 			postgresPortalLink := &datastore09.PortalLink{
-				UID:       ulid.Make().String(),
+				UID:       portalLink.UID,
 				Name:      portalLink.Name,
 				ProjectID: projectID,
 				Token:     portalLink.Token,

@@ -78,7 +78,7 @@ func migrateSourcesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 			}
 
 			postgresSource := &datastore09.Source{
-				UID:            ulid.Make().String(),
+				UID:            source.UID,
 				ProjectID:      projectID,
 				MaskID:         source.MaskID,
 				Name:           source.Name,

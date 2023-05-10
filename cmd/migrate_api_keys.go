@@ -13,8 +13,6 @@ import (
 	"github.com/frain-dev/migrate-to-postgres/convoy082/util"
 
 	auth09 "github.com/frain-dev/convoy/auth"
-	"github.com/oklog/ulid/v2"
-
 	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/jmoiron/sqlx"
@@ -102,7 +100,7 @@ func migrateAPIKeysCollection(store datastore082.Store, dbx *sqlx.DB) error {
 			}
 
 			postgresAPIKey := &datastore09.APIKey{
-				UID:    ulid.Make().String(),
+				UID:    ak.UID,
 				MaskID: ak.MaskID,
 				Name:   ak.Name,
 				Role: auth09.Role{

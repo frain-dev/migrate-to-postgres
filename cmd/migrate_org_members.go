@@ -12,8 +12,6 @@ import (
 
 	"github.com/frain-dev/migrate-to-postgres/convoy082/util"
 
-	"github.com/oklog/ulid/v2"
-
 	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/jmoiron/sqlx"
@@ -102,7 +100,7 @@ func migrateOrgMemberCollection(store datastore082.Store, dbx *sqlx.DB) error {
 			}
 
 			postgresOrgMember := &datastore09.OrganisationMember{
-				UID:            ulid.Make().String(),
+				UID:            orgMember.UID,
 				OrganisationID: orgID,
 				UserID:         userID,
 				Role: auth09.Role{

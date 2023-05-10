@@ -11,8 +11,6 @@ import (
 
 	"github.com/frain-dev/migrate-to-postgres/convoy082/pkg/log"
 
-	"github.com/oklog/ulid/v2"
-
 	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/jmoiron/sqlx"
@@ -77,7 +75,7 @@ func migrateEndpointsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 			}
 
 			postgresEndpoint := datastore09.Endpoint{
-				UID:                ulid.Make().String(),
+				UID:                endpoint.UID,
 				ProjectID:          projectID,
 				OwnerID:            endpoint.OwnerID,
 				TargetURL:          endpoint.TargetURL,
@@ -111,7 +109,7 @@ func migrateEndpointsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 			for _, secret := range endpoint.Secrets {
 				postgresEndpoint.Secrets = append(postgresEndpoint.Secrets, datastore09.Secret{
-					UID:       ulid.Make().String(),
+					UID:       secret.UID,
 					Value:     secret.Value,
 					CreatedAt: secret.CreatedAt.Time(),
 					UpdatedAt: secret.UpdatedAt.Time(),

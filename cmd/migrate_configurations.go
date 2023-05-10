@@ -10,8 +10,6 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
-	"github.com/oklog/ulid/v2"
-
 	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/frain-dev/convoy/database/postgres"
@@ -70,7 +68,7 @@ func migrateConfigurationsCollection(store datastore082.Store, dbx *sqlx.DB) err
 			}
 
 			postgresCfg := &datastore09.Configuration{
-				UID:                ulid.Make().String(),
+				UID:                cfg.UID,
 				IsAnalyticsEnabled: cfg.IsAnalyticsEnabled,
 				IsSignupEnabled:    cfg.IsSignupEnabled,
 				StoragePolicy:      nil,

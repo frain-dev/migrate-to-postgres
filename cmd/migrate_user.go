@@ -14,7 +14,6 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"github.com/oklog/ulid/v2"
 	"go.mongodb.org/mongo-driver/mongo"
 	"gopkg.in/guregu/null.v4"
 
@@ -69,7 +68,7 @@ func migrateUserCollection(store datastore082.Store, dbx *sqlx.DB) error {
 			}
 
 			postgresUser := datastore09.User{
-				UID:                        ulid.Make().String(),
+				UID:                        user.UID,
 				FirstName:                  user.FirstName,
 				LastName:                   user.LastName,
 				Email:                      user.Email,

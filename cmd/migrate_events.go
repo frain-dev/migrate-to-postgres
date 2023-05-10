@@ -15,8 +15,6 @@ import (
 
 	"github.com/frain-dev/convoy/pkg/httpheader"
 
-	"github.com/oklog/ulid/v2"
-
 	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/frain-dev/convoy/database/postgres"
@@ -104,7 +102,7 @@ func migrateEventsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 			}
 
 			postgresEvent := &datastore09.Event{
-				UID:              ulid.Make().String(),
+				UID:              event.UID,
 				EventType:        datastore09.EventType(event.EventType),
 				MatchedEndpoints: event.MatchedEndpoints,
 				SourceID:         sourceID,

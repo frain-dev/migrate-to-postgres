@@ -14,7 +14,6 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"github.com/oklog/ulid/v2"
 	"go.mongodb.org/mongo-driver/mongo"
 	"gopkg.in/guregu/null.v4"
 
@@ -88,7 +87,7 @@ func migrateOrganisationsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 			}
 
 			postgresOrg := &datastore09.Organisation{
-				UID:            ulid.Make().String(),
+				UID:            org.UID,
 				OwnerID:        ownerID,
 				Name:           org.Name,
 				CustomDomain:   null.NewString(org.CustomDomain, true),

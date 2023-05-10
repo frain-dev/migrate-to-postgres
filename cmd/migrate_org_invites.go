@@ -12,8 +12,6 @@ import (
 
 	"github.com/frain-dev/migrate-to-postgres/convoy082/util"
 
-	"github.com/oklog/ulid/v2"
-
 	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/jmoiron/sqlx"
@@ -96,7 +94,7 @@ func migrateOrgInvitesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 			}
 
 			postgresOrgInvite := &datastore09.OrganisationInvite{
-				UID:            ulid.Make().String(),
+				UID:            orgInvite.UID,
 				OrganisationID: orgID,
 				InviteeEmail:   orgInvite.InviteeEmail,
 				Token:          orgInvite.Token,

@@ -12,8 +12,6 @@ import (
 
 	"github.com/frain-dev/migrate-to-postgres/convoy082/util"
 
-	"github.com/oklog/ulid/v2"
-
 	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/jmoiron/sqlx"
@@ -99,7 +97,7 @@ func migrateSubscriptionsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 			}
 
 			postgresSubscription := datastore09.Subscription{
-				UID:        ulid.Make().String(),
+				UID:        s.UID,
 				Name:       s.Name,
 				Type:       datastore09.SubscriptionType(s.Type),
 				ProjectID:  projectID,

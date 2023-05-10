@@ -14,8 +14,6 @@ import (
 
 	"github.com/frain-dev/convoy/pkg/httpheader"
 
-	"github.com/oklog/ulid/v2"
-
 	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/jmoiron/sqlx"
@@ -120,7 +118,7 @@ func migrateEventDeliveriesCollection(store datastore082.Store, dbx *sqlx.DB) er
 			}
 
 			postgresEventDelivery := &datastore09.EventDelivery{
-				UID:            ulid.Make().String(),
+				UID:            ed.UID,
 				ProjectID:      projectID,
 				EventID:        eventID,
 				EndpointID:     endpointID,
@@ -154,7 +152,7 @@ func migrateEventDeliveriesCollection(store datastore082.Store, dbx *sqlx.DB) er
 
 			for _, attempt := range ed.DeliveryAttempts {
 				postgresEventDelivery.DeliveryAttempts = append(postgresEventDelivery.DeliveryAttempts, datastore09.DeliveryAttempt{
-					UID:              ulid.Make().String(),
+					UID:              attempt.UID,
 					MsgID:            attempt.MsgID,
 					URL:              attempt.URL,
 					Method:           attempt.Method,
