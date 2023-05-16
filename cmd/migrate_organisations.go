@@ -36,7 +36,7 @@ func migrateOrganisationsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 	var lastID primitive.ObjectID
 	seen := map[string]bool{}
 
-	// ignore piggyvest data
+	// ignore piggyvest & dojah data
 	filter := bson.M{
 		"uid": bson.M{
 			"$not": bson.M{
@@ -44,6 +44,7 @@ func migrateOrganisationsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 					"f76b9e93-ea59-40a6-96bf-591ed1a839ca",
 					"64391e49-6057-4e9e-a10b-cf0858cc3de7",
 					"92d748ec-3f4a-453a-ab54-7f54fc5c966b",
+					"c0d6dfc8-6967-4590-8a7a-51b8a47abdd1",
 				},
 			},
 		},
