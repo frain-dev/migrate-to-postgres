@@ -112,10 +112,13 @@ func migrateAPIKeysCollection(store datastore082.Store, dbx *sqlx.DB) error {
 				Salt:      ak.Salt,
 				Type:      datastore09.KeyType(ak.Type),
 				UserID:    userID,
-				ExpiresAt: null.TimeFrom(ak.ExpiresAt.Time()),
 				CreatedAt: ak.CreatedAt.Time(),
 				UpdatedAt: ak.UpdatedAt.Time(),
 				DeletedAt: getDeletedAt(ak.DeletedAt),
+			}
+
+			if ak.ExpiresAt != 0 {
+				postgresAPIKey.ExpiresAt = null.TimeFrom(ak.ExpiresAt.Time())
 			}
 
 			oldIDToNewID[ak.UID] = postgresAPIKey.UID

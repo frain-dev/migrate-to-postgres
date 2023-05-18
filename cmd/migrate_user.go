@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strings"
 
 	"github.com/frain-dev/migrate-to-postgres/convoy082/pkg/log"
 
@@ -59,6 +60,10 @@ func migrateUserCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 		for i := range users {
 			user := &users[i]
+
+			if strings.Contains(user.Email, "dojah") {
+				continue
+			}
 
 			if !seen[user.UID] {
 				seen[user.UID] = true
