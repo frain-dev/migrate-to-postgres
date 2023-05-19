@@ -29,7 +29,7 @@ func migrateProjectsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.ProjectsCollection)
 
-	pg := (&PG{db: dbx})
+	// pg := (&PG{db: dbx})
 
 	totalProjects, err := store.Count(ctx, bson.M{})
 	if err != nil {
@@ -153,10 +153,10 @@ func migrateProjectsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		}
 
 		if len(postgresProjects) > 0 {
-			err = pg.SaveProjects(ctx, postgresProjects)
-			if err != nil {
-				return fmt.Errorf("failed to save postgres projects: %v", err)
-			}
+			//err = pg.SaveProjects(ctx, postgresProjects)
+			//if err != nil {
+			//	return fmt.Errorf("failed to save postgres projects: %v", err)
+			//}
 		}
 	}
 

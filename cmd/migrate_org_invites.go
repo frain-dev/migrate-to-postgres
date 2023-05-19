@@ -28,7 +28,7 @@ func migrateOrgInvitesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.OrganisationInvitesCollection)
 
-	pg := &PG{db: dbx}
+	// pg := &PG{db: dbx}
 
 	count, err := store.Count(ctx, bson.M{})
 	if err != nil {
@@ -115,10 +115,10 @@ func migrateOrgInvitesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		}
 
 		if len(postgresOrgInvites) > 0 {
-			err = pg.SaveOrganisationInvites(ctx, postgresOrgInvites)
-			if err != nil {
-				return fmt.Errorf("failed to save postgres orgInvites: %v", err)
-			}
+			//err = pg.SaveOrganisationInvites(ctx, postgresOrgInvites)
+			//if err != nil {
+			//	return fmt.Errorf("failed to save postgres orgInvites: %v", err)
+			//}
 		}
 	}
 

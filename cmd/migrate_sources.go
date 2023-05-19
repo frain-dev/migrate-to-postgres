@@ -32,7 +32,7 @@ func migrateSourcesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.SourceCollection)
 
-	pg := &PG{db: dbx}
+	// pg := &PG{db: dbx}
 
 	count, err := store.Count(ctx, bson.M{})
 	if err != nil {
@@ -134,10 +134,10 @@ func migrateSourcesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		}
 
 		if len(postgresSources) > 0 {
-			err = pg.SaveSources(ctx, postgresSources)
-			if err != nil {
-				return fmt.Errorf("failed to save postgres source: %v", err)
-			}
+			//err = pg.SaveSources(ctx, postgresSources)
+			//if err != nil {
+			//	return fmt.Errorf("failed to save postgres source: %v", err)
+			//}
 		}
 	}
 

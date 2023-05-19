@@ -28,7 +28,7 @@ func migrateOrgMemberCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.OrganisationMembersCollection)
 
-	pg := &PG{db: dbx}
+	// pg := &PG{db: dbx}
 
 	totalEndpoints, err := store.Count(ctx, bson.M{})
 	if err != nil {
@@ -118,10 +118,10 @@ func migrateOrgMemberCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		}
 
 		if len(postgresOrgMembers) > 0 {
-			err = pg.SaveOrganisationMembers(ctx, postgresOrgMembers)
-			if err != nil {
-				return fmt.Errorf("failed to save postgres orgMembers: %v", err)
-			}
+			//err = pg.SaveOrganisationMembers(ctx, postgresOrgMembers)
+			//if err != nil {
+			//	return fmt.Errorf("failed to save postgres orgMembers: %v", err)
+			//}
 		}
 	}
 

@@ -30,7 +30,7 @@ func migrateOrganisationsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 		return fmt.Errorf("faild to count organisations: %v", err)
 	}
 
-	pg := &PG{db: dbx}
+	// pg := &PG{db: dbx}
 
 	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
 	var lastID primitive.ObjectID
@@ -101,10 +101,10 @@ func migrateOrganisationsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 		}
 
 		if len(postgresOrgs) > 0 {
-			err = pg.SaveOrganisations(ctx, postgresOrgs)
-			if err != nil {
-				return fmt.Errorf("failed to save postgres orgs: %v", err)
-			}
+			//err = pg.SaveOrganisations(ctx, postgresOrgs)
+			//if err != nil {
+			//	return fmt.Errorf("failed to save postgres orgs: %v", err)
+			//}
 		}
 	}
 

@@ -28,7 +28,7 @@ func migrateEndpointsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.EndpointCollection)
 
-	pg := &PG{db: dbx}
+	// pg := &PG{db: dbx}
 
 	totalEndpoints, err := store.Count(ctx, bson.M{})
 	if err != nil {
@@ -127,10 +127,10 @@ func migrateEndpointsCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		}
 
 		if len(postgresEndpoints) > 0 {
-			err = pg.SaveEndpoints(ctx, postgresEndpoints)
-			if err != nil {
-				return fmt.Errorf("failed to save postgres endpoints: %v", err)
-			}
+			//err = pg.SaveEndpoints(ctx, postgresEndpoints)
+			//if err != nil {
+			//	return fmt.Errorf("failed to save postgres endpoints: %v", err)
+			//}
 		}
 	}
 

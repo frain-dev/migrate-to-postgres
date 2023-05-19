@@ -12,8 +12,6 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 
-	"github.com/frain-dev/convoy/database/postgres"
-
 	"github.com/jmoiron/sqlx"
 
 	datastore09 "github.com/frain-dev/convoy/datastore"
@@ -27,7 +25,7 @@ func migrateConfigurationsCollection(store datastore082.Store, dbx *sqlx.DB) err
 
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.ConfigCollection)
 
-	pgConfigRepo := postgres.NewConfigRepo(&PG{db: dbx})
+	// pgConfigRepo := postgres.NewConfigRepo(&PG{db: dbx})
 
 	count, err := store.Count(ctx, bson.M{})
 	if err != nil {
@@ -98,10 +96,10 @@ func migrateConfigurationsCollection(store datastore082.Store, dbx *sqlx.DB) err
 				}
 			}
 
-			err = pgConfigRepo.CreateConfiguration(ctx, postgresCfg)
-			if err != nil {
-				return fmt.Errorf("failed to save postgres cfg: %v", err)
-			}
+			//err = pgConfigRepo.CreateConfiguration(ctx, postgresCfg)
+			//if err != nil {
+			//	return fmt.Errorf("failed to save postgres cfg: %v", err)
+			//}
 
 			oldIDToNewID[cfg.UID] = postgresCfg.UID
 

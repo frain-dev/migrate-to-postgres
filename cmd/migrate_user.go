@@ -33,7 +33,7 @@ func migrateUserCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		return fmt.Errorf("faild to count users: %v", err)
 	}
 
-	pg := &PG{db: dbx}
+	// pg := &PG{db: dbx}
 
 	numBatches := int(math.Ceil(float64(count) / float64(batchSize)))
 	var lastID primitive.ObjectID
@@ -93,10 +93,10 @@ func migrateUserCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		}
 
 		if len(postgresUsers) > 0 {
-			err = pg.SaveUsers(ctx, postgresUsers)
-			if err != nil {
-				return fmt.Errorf("failed to save postgres users: %v", err)
-			}
+			//err = pg.SaveUsers(ctx, postgresUsers)
+			//if err != nil {
+			//	return fmt.Errorf("failed to save postgres users: %v", err)
+			//}
 		}
 	}
 

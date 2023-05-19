@@ -30,7 +30,7 @@ func migrateAPIKeysCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.APIKeyCollection)
 
-	pg := &PG{db: dbx}
+	// pg := &PG{db: dbx}
 
 	count, err := store.Count(ctx, bson.M{})
 	if err != nil {
@@ -126,10 +126,10 @@ func migrateAPIKeysCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		}
 
 		if len(postgresAPIKeys) > 0 {
-			err = pg.SaveAPIKeys(ctx, postgresAPIKeys)
-			if err != nil {
-				return fmt.Errorf("failed to save postgres api keys: %v", err)
-			}
+			//err = pg.SaveAPIKeys(ctx, postgresAPIKeys)
+			//if err != nil {
+			//	return fmt.Errorf("failed to save postgres api keys: %v", err)
+			//}
 		}
 	}
 

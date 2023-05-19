@@ -27,7 +27,7 @@ func migrateSubscriptionsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.SubscriptionCollection)
 
-	pg := &PG{db: dbx}
+	// pg := &PG{db: dbx}
 
 	count, err := store.Count(ctx, bson.M{})
 	if err != nil {
@@ -157,10 +157,10 @@ func migrateSubscriptionsCollection(store datastore082.Store, dbx *sqlx.DB) erro
 		}
 
 		if len(postgresSubscriptions) > 0 {
-			err = pg.SaveSubscriptions(ctx, postgresSubscriptions)
-			if err != nil {
-				return fmt.Errorf("failed to save postgres subscriptions: %v", err)
-			}
+			//err = pg.SaveSubscriptions(ctx, postgresSubscriptions)
+			//if err != nil {
+			//	return fmt.Errorf("failed to save postgres subscriptions: %v", err)
+			//}
 		}
 	}
 

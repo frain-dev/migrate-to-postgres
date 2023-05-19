@@ -30,7 +30,7 @@ func migratePortalLinksCollection(store datastore082.Store, dbx *sqlx.DB) error 
 
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.PortalLinkCollection)
 
-	pg := &PG{db: dbx}
+	// pg := &PG{db: dbx}
 
 	count, err := store.Count(ctx, bson.M{})
 	if err != nil {
@@ -105,10 +105,10 @@ func migratePortalLinksCollection(store datastore082.Store, dbx *sqlx.DB) error 
 		}
 
 		if len(postgresPortalLinks) > 0 {
-			err = pg.SavePortalLinks(ctx, postgresPortalLinks)
-			if err != nil {
-				return fmt.Errorf("failed to save postgres portalLinks: %v", err)
-			}
+			//err = pg.SavePortalLinks(ctx, postgresPortalLinks)
+			//if err != nil {
+			//	return fmt.Errorf("failed to save postgres portalLinks: %v", err)
+			//}
 		}
 	}
 

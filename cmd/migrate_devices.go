@@ -25,7 +25,7 @@ func migrateDevicesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 
 	ctx := context.WithValue(context.Background(), datastore082.CollectionCtx, datastore082.DeviceCollection)
 
-	pg := &PG{db: dbx}
+	// pg := &PG{db: dbx}
 
 	count, err := store.Count(ctx, bson.M{})
 	if err != nil {
@@ -94,10 +94,10 @@ func migrateDevicesCollection(store datastore082.Store, dbx *sqlx.DB) error {
 		}
 
 		if len(postgresDevices) > 0 {
-			err = pg.SaveDevices(ctx, postgresDevices)
-			if err != nil {
-				return fmt.Errorf("failed to save postgres devices: %v", err)
-			}
+			//err = pg.SaveDevices(ctx, postgresDevices)
+			//if err != nil {
+			//	return fmt.Errorf("failed to save postgres devices: %v", err)
+			//}
 		}
 	}
 
